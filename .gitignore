@@ -1,0 +1,84 @@
+# ==================================
+# PetID - Git Ignore
+# ==================================
+
+# Dependencias de Node.js / pnpm
+node_modules/
+.pnpm-store/
+
+# Variables de entorno y credenciales
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Archivos generados - React / Vite
+dist/
+build/
+.vite/
+coverage/
+
+# Archivos generados - Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Flutter - archivos locales
+**/android/local.properties
+**/android/key.properties
+**/android/*.keystore
+**/android/*.jks
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+
+# Flutter - archivos generados
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# Archivos temporales del editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Archivos locales de base de datos
+*.sqlite
+*.sqlite3
+*.db
+
+# Fotografías y archivos subidos en desarrollo
+backend/uploads/
+backend/storage/uploads/
+
+# Seguridad y certificados
+*.pem
+*.key
+*.p12
+*.pfx
