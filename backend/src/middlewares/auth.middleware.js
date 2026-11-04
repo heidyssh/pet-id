@@ -47,12 +47,22 @@ export async function verificarToken(req, res, next) {
         message: 'Token inválido o expirado',
       });
     }
+    if (
+      !usuario.correo_verificado ||
+      payload.ver !== usuario.token_version
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: 'Sesión inválida o expirada',
+      });
+    }
 
     req.usuario = {
       id_usuario: usuario.id_usuario,
     };
 
     return next();
+    
   } catch (error) {
     if (
       error instanceof jwt.JsonWebTokenError ||

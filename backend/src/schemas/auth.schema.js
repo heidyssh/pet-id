@@ -26,3 +26,21 @@ export const loginSchema = z.strictObject({
   correo: correoSchema,
   password: z.string().min(1).max(1024),
 });
+
+export const solicitudCorreoSchema = z.strictObject({
+  correo: z.email().trim().toLowerCase().max(150),
+});
+
+export const confirmarTokenSchema = z.strictObject({
+  token: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const restablecerPasswordSchema = z.strictObject({
+  token: z.string().regex(/^[a-f0-9]{64}$/),
+  password: z.string()
+    .min(12)
+    .refine(
+      (valor) => Buffer.byteLength(valor, 'utf8') <= 72,
+      'Contraseña demasiado larga'
+    ),
+});

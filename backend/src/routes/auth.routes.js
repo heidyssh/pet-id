@@ -12,6 +12,19 @@ import {
   loginSchema,
 } from '../schemas/auth.schema.js';
 
+import {
+  reenviarVerificacion,
+  confirmarCorreo,
+  solicitarCambioPassword,
+  confirmarCambioPassword,
+} from '../controllers/auth.controller.js';
+
+import {
+  solicitudCorreoSchema,
+  confirmarTokenSchema,
+  restablecerPasswordSchema,
+} from '../schemas/auth.schema.js';
+
 import { validar } from '../middlewares/validate.middleware.js';
 import { verificarToken } from '../middlewares/auth.middleware.js';
 
@@ -40,6 +53,34 @@ router.get(
   '/me',
   verificarToken,
   me
+);
+
+router.post(
+  '/reenviar-verificacion',
+  registroLimiter,
+  validar(solicitudCorreoSchema),
+  reenviarVerificacion
+);
+
+router.post(
+  '/verificar-correo',
+  registroLimiter,
+  validar(confirmarTokenSchema),
+  confirmarCorreo
+);
+
+router.post(
+  '/recuperar-contrasena',
+  registroLimiter,
+  validar(solicitudCorreoSchema),
+  solicitarCambioPassword
+);
+
+router.post(
+  '/restablecer-contrasena',
+  registroLimiter,
+  validar(restablecerPasswordSchema),
+  confirmarCambioPassword
 );
 
 export default router;

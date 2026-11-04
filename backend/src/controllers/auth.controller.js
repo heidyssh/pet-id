@@ -4,6 +4,12 @@ import {
   iniciarSesion,
   obtenerPerfil,
 } from '../services/auth.service.js';
+import {
+  solicitarVerificacion,
+  verificarCorreo,
+  solicitarRecuperacion,
+  restablecerContrasena,
+} from '../services/seguridadCuenta.service.js';
 
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -43,3 +49,54 @@ export const me = asyncHandler(async (req, res) => {
     data: usuario,
   });
 });
+
+export const reenviarVerificacion = asyncHandler(
+  async (req, res) => {
+    const message = await solicitarVerificacion(
+      req.body.correo
+    );
+
+    return res.status(200).json({
+      success: true,
+      message,
+    });
+  }
+);
+
+export const confirmarCorreo = asyncHandler(
+  async (req, res) => {
+    await verificarCorreo(req.body.token);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Correo verificado correctamente',
+    });
+  }
+);
+
+export const solicitarCambioPassword = asyncHandler(
+  async (req, res) => {
+    const message = await solicitarRecuperacion(
+      req.body.correo
+    );
+
+    return res.status(200).json({
+      success: true,
+      message,
+    });
+  }
+);
+
+export const confirmarCambioPassword = asyncHandler(
+  async (req, res) => {
+    await restablecerContrasena(
+      req.body.token,
+      req.body.password
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contraseña actualizada correctamente',
+    });
+  }
+);

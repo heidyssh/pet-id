@@ -56,6 +56,18 @@ export const Usuario = sequelize.define('Usuario', {
     allowNull: false,
     defaultValue: true,
   },
+
+    correo_verificado: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+
+  token_version: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
 }, {
   tableName: 'usuarios',
   timestamps: false,

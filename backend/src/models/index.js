@@ -15,6 +15,9 @@ import { Coincidencia } from './Coincidencia.js';
 import { HistorialClinico } from './HistorialClinico.js';
 import { PublicacionAdopcion } from './PublicacionAdopcion.js';
 import { SolicitudAdopcion } from './SolicitudAdopcion.js';
+import { TokenSeguridad } from './TokenSeguridad.js';
+import { SesionUsuario } from './SesionUsuario.js';
+import { RefreshTokenUsado } from './RefreshTokenUsado.js';
 
 // ==========================================
 // USUARIOS Y ROLES (N:M)
@@ -313,6 +316,43 @@ Usuario.hasMany(SolicitudAdopcion, {
 SolicitudAdopcion.belongsTo(Usuario, {
   foreignKey: 'id_usuario',
   as: 'solicitante',
+});
+
+Usuario.hasMany(TokenSeguridad, {
+  foreignKey: 'id_usuario',
+  as: 'tokensSeguridad',
+});
+
+TokenSeguridad.belongsTo(Usuario, {
+  foreignKey: 'id_usuario',
+  as: 'usuario',
+});
+// =====================================
+// USUARIOS Y SESIONES
+// =====================================
+
+Usuario.hasMany(SesionUsuario, {
+  foreignKey: 'id_usuario',
+  as: 'sesiones',
+});
+
+SesionUsuario.belongsTo(Usuario, {
+  foreignKey: 'id_usuario',
+  as: 'usuario',
+});
+
+// =====================================
+// SESIONES Y TOKENS UTILIZADOS
+// =====================================
+
+SesionUsuario.hasMany(RefreshTokenUsado, {
+  foreignKey: 'id_sesion',
+  as: 'tokensUsados',
+});
+
+RefreshTokenUsado.belongsTo(SesionUsuario, {
+  foreignKey: 'id_sesion',
+  as: 'sesion',
 });
 
 // ==========================================

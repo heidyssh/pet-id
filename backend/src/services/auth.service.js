@@ -5,6 +5,9 @@ import jwt from 'jsonwebtoken';
 import { sequelize } from '../config/sequelize.js';
 import { Usuario, Rol, UsuarioRol } from '../models/index.js';
 import { AppError } from '../utils/AppError.js';
+import {
+  solicitarVerificacion,
+} from './seguridadCuenta.service.js';
 
 const HASH_ROUNDS = 12;
 
@@ -23,7 +26,9 @@ function crearToken(usuario) {
     );
   }
 
-  return jwt.sign({}, secret, {
+  return jwt.sign({
+    ver: usuario.token_version,
+  }, secret, {
     algorithm: 'HS256',
     subject: String(usuario.id_usuario),
     issuer: 'petid-api',
@@ -97,11 +102,11 @@ export async function registrarUsuario(datos) {
     throw error;
   }
 
+  await solicitarVerificacion(usuario.correo);
+
   return {
     usuario: datosPublicos(usuario),
-    token: crearToken(usuario),
-    token_type: 'Bearer',
-    expires_in: 900,
+    message: 'Revisá tu correo para activar tu cuenta',
   };
 }
 
@@ -123,6 +128,13 @@ export async function iniciarSesion(datos) {
     throw new AppError(
       'Correo o contraseña incorrectos',
       401
+    );
+  }
+
+  if (!usuario.correo_verificado) {
+  throw new AppError(
+    'Debés verificar tu correo antes de iniciar sesión',
+    403
     );
   }
 
