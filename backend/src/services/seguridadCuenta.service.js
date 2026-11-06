@@ -7,6 +7,7 @@ import {
   emitirToken,
   consumirToken,
 } from './tokenSeguridad.service.js';
+import { SesionUsuario } from '../models/index.js';
 
 const MENSAJE_GENERICO =
   'Si la cuenta existe, recibirás un correo con instrucciones.';
@@ -121,6 +122,18 @@ export async function restablecerContrasena(
         'token_version',
         { transaction }
       );
+      await SesionUsuario.update(
+  {
+    fecha_revocacion: new Date(),
+  },
+  {
+    where: {
+      id_usuario: idUsuario,
+      fecha_revocacion: null,
+    },
+    transaction,
+  }
+);
 
       // Invalidar cualquier otro token pendiente.
       await TokenSeguridad.update(

@@ -3,8 +3,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-
+import sesionRoutes from './routes/sesion.routes.js';
+import catalogoRoutes from './routes/catalogo.routes.js';
+import mascotaRoutes from './routes/mascota.routes.js';
 import { env } from './config/config.js';
+import extravioRoutes from './routes/extravio.routes.js';
+import avistamientoRoutes from './routes/avistamiento.routes.js';
 
 import authRoutes from './routes/auth.routes.js';
 
@@ -80,8 +84,28 @@ app.get('/api/health', (req, res) => {
 // RUTAS DE LA API
 // ==========================================
 
-// Autenticación y usuarios
+
+// Autenticación
 app.use('/api/auth', authRoutes);
+
+// Gestión de sesiones
+app.use('/api/sesiones', sesionRoutes);
+
+// Catálogos
+app.use('/api/catalogos', catalogoRoutes);
+
+// Mascotas
+app.use('/api/mascotas', mascotaRoutes);
+
+//Extravios
+app.use('/api/extravios', extravioRoutes);
+
+//Avistamientos
+app.use('/api/avistamientos', avistamientoRoutes);
+
+// Estos dos siempre deben quedar al final.
+app.use(notFoundMiddleware);
+app.use(errorMiddleware);
 
 // Próximos módulos:
 // app.use('/api/usuarios', usuarioRoutes);

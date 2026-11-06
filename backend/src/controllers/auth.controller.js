@@ -26,7 +26,10 @@ export const registro = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const resultado = await iniciarSesion(req.body);
+  const resultado = await iniciarSesion(
+  req.body,
+  req.get('user-agent') ?? ''
+);
 
   res.setHeader('Cache-Control', 'no-store');
 

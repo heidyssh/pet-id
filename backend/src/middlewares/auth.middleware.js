@@ -1,28 +1,33 @@
 
 import jwt from 'jsonwebtoken';
-import { Usuario } from '../models/index.js';
+
+import {
+  Usuario,
+  SesionUsuario,
+} from '../models/index.js';
+
+const IDLE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function noAutorizado(res) {
+  return res.status(401).json({
+    success: false,
+    message: 'Sesión inválida o expirada',
+  });
+}
 
 export async function verificarToken(req, res, next) {
   const authorization = req.headers.authorization;
 
-  if (!authorization?.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Autenticación requerida',
-    });
+  if (!/^Bearer\s+\S+$/i.test(authorization ?? '')) {
+    return noAutorizado(res);
   }
 
-  const token = authorization.slice(7).trim();
+  const token = authorization.split(/\s+/)[1];
 
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Autenticación requerida',
-    });
-  }
+  let payload;
 
   try {
-    const payload = jwt.verify(
+    payload = jwt.verify(
       token,
       process.env.JWT_SECRET,
       {
@@ -31,49 +36,66 @@ export async function verificarToken(req, res, next) {
         audience: 'petid-client',
       }
     );
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return noAutorizado(res);
+    }
 
-    if (!payload.sub || !/^[0-9]+$/.test(payload.sub)) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token inválido o expirado',
-      });
+    return next(error);
+  }
+
+  if (
+    !/^[1-9]\d*$/.test(String(payload.sub ?? '')) ||
+    typeof payload.sid !== 'string' ||
+    typeof payload.ver !== 'number'
+  ) {
+    return noAutorizado(res);
+  }
+
+  try {
+    const sesion = await SesionUsuario.findOne({
+      where: {
+        id_sesion: payload.sid,
+        id_usuario: payload.sub,
+        fecha_revocacion: null,
+      },
+    });
+
+    if (!sesion) {
+      return noAutorizado(res);
+    }
+
+    const ahora = Date.now();
+
+    if (
+      new Date(sesion.fecha_expiracion).getTime() <= ahora ||
+      ahora - new Date(sesion.ultimo_uso).getTime() >
+        IDLE_DURATION_MS
+    ) {
+      return noAutorizado(res);
     }
 
     const usuario = await Usuario.findByPk(payload.sub);
 
-    if (!usuario || !usuario.activo) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token inválido o expirado',
-      });
-    }
     if (
+      !usuario ||
+      !usuario.activo ||
       !usuario.correo_verificado ||
-      payload.ver !== usuario.token_version
+      usuario.token_version !== payload.ver
     ) {
-      return res.status(401).json({
-        success: false,
-        message: 'Sesión inválida o expirada',
-      });
+      return noAutorizado(res);
     }
 
     req.usuario = {
       id_usuario: usuario.id_usuario,
     };
 
-    return next();
-    
-  } catch (error) {
-    if (
-      error instanceof jwt.JsonWebTokenError ||
-      error instanceof jwt.TokenExpiredError
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token inválido o expirado',
-      });
-    }
+    req.sesion = {
+      id_sesion: sesion.id_sesion,
+    };
 
+    return next();
+  } catch (error) {
     return next(error);
   }
 }
