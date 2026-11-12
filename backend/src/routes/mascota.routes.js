@@ -15,6 +15,8 @@ import {
 
 import { validar } from '../middlewares/validate.middleware.js';
 import { verificarToken } from '../middlewares/auth.middleware.js';
+import { subirFoto } from '../middlewares/upload.middleware.js';
+import { subirFotoMascota } from '../controllers/foto.controller.js';
 
 const router = Router();
 
@@ -32,6 +34,12 @@ router.post(
 router.get(
   '/mias',
   misMascotas
+);
+
+router.post(
+  '/:idMascota/fotos',
+  subirFoto,
+  subirFotoMascota
 );
 
 // Consultar una mascota propia

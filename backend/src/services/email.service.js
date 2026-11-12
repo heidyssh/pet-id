@@ -1,5 +1,16 @@
 
 import nodemailer from 'nodemailer';
+import { env } from '../config/config.js';
+
+function smtpConfigurado() {
+  return Boolean(
+    process.env.SMTP_HOST &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASSWORD &&
+    process.env.SMTP_FROM &&
+    Number(process.env.SMTP_PORT)
+  );
+}
 
 function crearTransporte() {
   const puerto = Number(process.env.SMTP_PORT);
@@ -34,6 +45,19 @@ export async function enviarCorreo({
   asunto,
   contenido,
 }) {
+  if (!smtpConfigurado()) {
+    if (env.NODE_ENV !== 'production' && env.DEV_EMAIL_MODE === 'log') {
+      console.info('[PetID correo de desarrollo]', {
+        destinatario,
+        asunto,
+        contenido,
+      });
+      return;
+    }
+
+    throw new Error('Servicio SMTP no configurado');
+  }
+
   const transporte = crearTransporte();
 
   await transporte.sendMail({

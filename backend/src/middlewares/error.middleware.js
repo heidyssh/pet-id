@@ -1,5 +1,6 @@
 
 import { AppError } from '../utils/AppError.js';
+import multer from 'multer';
 
 export function errorMiddleware(err, req, res, next) {
   if (res.headersSent) {
@@ -23,6 +24,29 @@ export function errorMiddleware(err, req, res, next) {
     return res.status(413).json({
       success: false,
       message: 'La solicitud excede el tamaño permitido',
+    });
+  }
+
+  if (err instanceof multer.MulterError) {
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      success: false,
+      message: err.code === 'LIMIT_FILE_SIZE'
+        ? 'La imagen excede el tamaño permitido'
+        : 'No se pudo procesar el archivo enviado',
+    });
+  }
+
+  if (err.name === 'SequelizeValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Los datos no cumplen las restricciones requeridas',
+    });
+  }
+
+  if (err.name === 'SequelizeUniqueConstraintError') {
+    return res.status(409).json({
+      success: false,
+      message: 'El registro ya existe',
     });
   }
 

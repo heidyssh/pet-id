@@ -12,6 +12,10 @@ import {
 
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { crearAvistamientoSchema } from '../schemas/avistamiento.schema.js';
+import { agregarFotoAvistamiento } from '../services/foto.service.js';
+import { Avistamiento } from '../models/index.js';
+import { generarCoincidencias } from '../services/coincidencia.service.js';
 
 function obtenerFiltros(query) {
   const resultado = listarAvistamientosSchema.safeParse(
@@ -41,6 +45,48 @@ export const registrarAnonimo = asyncHandler(
       message: 'Avistamiento registrado correctamente',
       data: avistamiento,
     });
+  }
+);
+
+export const registrarAnonimoConFoto = asyncHandler(
+  async (req, res) => {
+    if (!req.file) {
+      throw new AppError('Debe enviar una fotografía', 400);
+    }
+
+    let datos;
+    try {
+      datos = JSON.parse(req.body.datos);
+    } catch {
+      throw new AppError('El campo datos debe contener JSON válido', 400);
+    }
+
+    const validacion = crearAvistamientoSchema.safeParse(datos);
+    if (!validacion.success) {
+      throw new AppError('Datos del avistamiento inválidos', 400);
+    }
+
+    const avistamiento = await crearAvistamiento(validacion.data, null, false);
+
+    try {
+      const foto = await agregarFotoAvistamiento(
+        avistamiento.id_avistamiento,
+        null,
+        req.file,
+        req.body.tipo_captura
+      );
+      await generarCoincidencias(avistamiento.id_avistamiento);
+      return res.status(201).json({
+        success: true,
+        message: 'Avistamiento anónimo registrado correctamente',
+        data: { ...avistamiento, foto },
+      });
+    } catch (error) {
+      await Avistamiento.destroy({
+        where: { id_avistamiento: avistamiento.id_avistamiento, id_usuario: null },
+      });
+      throw error;
+    }
   }
 );
 

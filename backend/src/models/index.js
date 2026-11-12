@@ -18,6 +18,7 @@ import { SolicitudAdopcion } from './SolicitudAdopcion.js';
 import { TokenSeguridad } from './TokenSeguridad.js';
 import { SesionUsuario } from './SesionUsuario.js';
 import { RefreshTokenUsado } from './RefreshTokenUsado.js';
+import { Notificacion } from './Notificacion.js';
 
 // ==========================================
 // USUARIOS Y ROLES (N:M)
@@ -355,25 +356,40 @@ RefreshTokenUsado.belongsTo(SesionUsuario, {
   as: 'sesion',
 });
 
-// ==========================================
-// EXPORTACIONES
-// ==========================================
+Usuario.hasMany(Notificacion, {
+  foreignKey: 'id_usuario',
+  as: 'notificaciones',
+});
 
-export {
-  Usuario,
-  Rol,
-  UsuarioRol,
-  Organizacion,
-  UsuarioOrganizacion,
-  Especie,
-  Raza,
-  Mascota,
-  FotoMascota,
-  ReporteExtravio,
-  Avistamiento,
-  FotoAvistamiento,
-  Coincidencia,
-  HistorialClinico,
-  PublicacionAdopcion,
-  SolicitudAdopcion,
-};
+Notificacion.belongsTo(Usuario, {
+  foreignKey: 'id_usuario',
+  as: 'usuario',
+});
+
+
+  // ==========================================
+  // EXPORTACIONES
+  // ==========================================
+
+  export {
+    Usuario,
+    Rol,
+    UsuarioRol,
+    Organizacion,
+    UsuarioOrganizacion,
+    Especie,
+    Raza,
+    Mascota,
+    FotoMascota,
+    ReporteExtravio,
+    Avistamiento,
+    FotoAvistamiento,
+    Coincidencia,
+    HistorialClinico,
+    PublicacionAdopcion,
+    SolicitudAdopcion,
+    TokenSeguridad,
+    SesionUsuario,
+    RefreshTokenUsado,
+    Notificacion,
+  };

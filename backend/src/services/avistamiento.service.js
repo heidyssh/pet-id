@@ -11,6 +11,7 @@ import {
   crearPuntoGeografico,
   validarIdPositivo,
 } from '../utils/ubicacion.js';
+import { generarCoincidencias } from './coincidencia.service.js';
 
 const atributosPublicos = [
   'id_avistamiento',
@@ -49,7 +50,8 @@ function verificarId(id) {
 
 export async function crearAvistamiento(
   datos,
-  idUsuario = null
+  idUsuario = null,
+  generarCandidatos = true
 ) {
   if (datos.id_especie != null) {
     const especie = await Especie.findByPk(
@@ -81,6 +83,10 @@ export async function crearAvistamiento(
     descripcion: datos.descripcion,
     estado: 'registrado',
   });
+
+  if (generarCandidatos) {
+    await generarCoincidencias(avistamiento.id_avistamiento);
+  }
 
   // No incluir coordenadas exactas
   // ni el identificador del usuario en la respuesta.

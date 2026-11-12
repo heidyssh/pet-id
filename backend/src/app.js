@@ -1,5 +1,6 @@
 
 import express from 'express';
+import path from 'node:path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -9,6 +10,13 @@ import mascotaRoutes from './routes/mascota.routes.js';
 import { env } from './config/config.js';
 import extravioRoutes from './routes/extravio.routes.js';
 import avistamientoRoutes from './routes/avistamiento.routes.js';
+import coincidenciaRoutes from './routes/coincidencia.routes.js';
+import organizacionRoutes from './routes/organizacion.routes.js';
+import historialRoutes from './routes/historial.routes.js';
+import adopcionRoutes from './routes/adopcion.routes.js';
+import notificacionRoutes from './routes/notificacion.routes.js';
+import adminRoutes from './routes/admin.routes.js';
+import mapaRoutes from './routes/mapa.routes.js';
 
 import authRoutes from './routes/auth.routes.js';
 
@@ -69,6 +77,15 @@ app.use(express.json({
   limit: '16kb',
 }));
 
+app.use(
+  '/storage/imagenes',
+  express.static(path.resolve(process.cwd(), 'storage', 'imagenes'), {
+    fallthrough: false,
+    index: false,
+    maxAge: env.NODE_ENV === 'production' ? '1d' : 0,
+  })
+);
+
 // ==========================================
 // HEALTH CHECK
 // ==========================================
@@ -102,10 +119,14 @@ app.use('/api/extravios', extravioRoutes);
 
 //Avistamientos
 app.use('/api/avistamientos', avistamientoRoutes);
+app.use('/api/coincidencias', coincidenciaRoutes);
+app.use('/api/organizaciones', organizacionRoutes);
+app.use('/api/historial-clinico', historialRoutes);
+app.use('/api/adopciones', adopcionRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/mapas', mapaRoutes);
 
-// Estos dos siempre deben quedar al final.
-app.use(notFoundMiddleware);
-app.use(errorMiddleware);
 
 // Próximos módulos:
 // app.use('/api/usuarios', usuarioRoutes);

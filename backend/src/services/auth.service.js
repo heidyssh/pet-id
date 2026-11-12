@@ -8,6 +8,7 @@ import { AppError } from '../utils/AppError.js';
 import {
   solicitarVerificacion,
 } from './seguridadCuenta.service.js';
+import { crearSesionConTokens } from './sesion.service.js';
 
 const HASH_ROUNDS = 12;
 
@@ -114,7 +115,7 @@ export async function registrarUsuario(datos) {
 // INICIAR SESIÓN
 // ==========================================
 
-export async function iniciarSesion(datos) {
+export async function iniciarSesion(datos, agenteUsuario = '') {
   const usuario = await Usuario.scope('withPassword').findOne({
     where: { correo: datos.correo },
   });
@@ -138,11 +139,14 @@ export async function iniciarSesion(datos) {
     );
   }
 
+  const tokens = await crearSesionConTokens(
+    usuario,
+    agenteUsuario
+  );
+
   return {
     usuario: datosPublicos(usuario),
-    token: crearToken(usuario),
-    token_type: 'Bearer',
-    expires_in: 900,
+    ...tokens,
   };
 }
 

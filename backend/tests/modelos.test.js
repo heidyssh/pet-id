@@ -34,7 +34,9 @@ async function probarModelos() {
       );
     }
 
-    console.log('\n16 modelos consultados correctamente');
+    console.log(
+      `\n${Object.keys(modelos).length} modelos consultados correctamente`
+    );
 
   } catch (error) {
     console.error('\nError:', error);

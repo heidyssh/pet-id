@@ -19,6 +19,18 @@ const envSchema = z.object({
     .default('http://localhost:5173'),
 
   DB_POOL_MAX: z.coerce.number().int().positive().default(5),
+
+  DEV_EMAIL_MODE: z
+    .enum(['log', 'smtp'])
+    .default('log'),
+
+  VISION_PROVIDER: z
+    .enum(['disabled', 'google'])
+    .default('disabled'),
+
+  GOOGLE_VISION_API_KEY: z.string().optional(),
+
+  GOOGLE_MAPS_SERVER_API_KEY: z.string().optional(),
 });
 
 const resultado = envSchema.safeParse(process.env);

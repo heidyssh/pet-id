@@ -8,6 +8,7 @@ import {
   obtenerAvistamientos,
   obtenerMisAvistamientos,
   detalleAvistamiento,
+  registrarAnonimoConFoto,
 } from '../controllers/avistamiento.controller.js';
 
 import {
@@ -16,6 +17,9 @@ import {
 
 import { verificarToken } from '../middlewares/auth.middleware.js';
 import { validar } from '../middlewares/validate.middleware.js';
+import { subirFoto } from '../middlewares/upload.middleware.js';
+import { subirFotoAvistamiento } from '../controllers/foto.controller.js';
+import { buscarAvistamientosCercanos } from '../controllers/geografia.controller.js';
 
 const router = Router();
 
@@ -32,6 +36,7 @@ const limiteAvistamientos = rateLimit({
 
 // Consultas públicas
 router.get('/', obtenerAvistamientos);
+router.get('/cercanos', buscarAvistamientosCercanos);
 
 // Reportes del usuario autenticado
 router.get(
@@ -48,6 +53,13 @@ router.post(
   registrarAnonimo
 );
 
+router.post(
+  '/anonimo-con-foto',
+  limiteAvistamientos,
+  subirFoto,
+  registrarAnonimoConFoto
+);
+
 // Reportar con sesión iniciada
 router.post(
   '/registrado',
@@ -55,6 +67,14 @@ router.post(
   limiteAvistamientos,
   validar(crearAvistamientoSchema),
   registrarAutenticado
+);
+
+router.post(
+  '/:idAvistamiento/fotos',
+  verificarToken,
+  limiteAvistamientos,
+  subirFoto,
+  subirFotoAvistamiento
 );
 
 // Consultar detalle público

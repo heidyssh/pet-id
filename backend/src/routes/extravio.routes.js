@@ -15,11 +15,13 @@ import { validar } from '../middlewares/validate.middleware.js';
 import {
   crearExtravioSchema,
 } from '../schemas/extravio.schema.js';
+import { buscarExtraviosCercanos } from '../controllers/geografia.controller.js';
 
 const router = Router();
 
 // Consultar reportes activos
 router.get('/', obtenerExtravios);
+router.get('/cercanos', buscarExtraviosCercanos);
 
 // Consultar reportes propios
 router.get(
