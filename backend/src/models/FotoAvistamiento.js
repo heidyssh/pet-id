@@ -29,6 +29,22 @@ export const FotoAvistamiento = sequelize.define('FotoAvistamiento', {
     allowNull: true,
   },
 
+  proveedor_almacenamiento: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'local',
+  },
+
+  id_almacenamiento_original: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  id_almacenamiento_recorte: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
   tipo_captura: {
     type: DataTypes.STRING(15),
     allowNull: true,

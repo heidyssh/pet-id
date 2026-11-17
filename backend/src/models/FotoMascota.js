@@ -29,6 +29,22 @@ export const FotoMascota = sequelize.define('FotoMascota', {
     allowNull: true,
   },
 
+  proveedor_almacenamiento: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'local',
+  },
+
+  id_almacenamiento_original: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  id_almacenamiento_recorte: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
   es_principal: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

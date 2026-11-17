@@ -62,9 +62,33 @@ const envSchema = z.object({
     .url()
     .default('https://tiles.openfreemap.org/styles/liberty'),
 
+  IMAGE_STORAGE_PROVIDER: z
+    .enum(['local', 'cloudinary'])
+    .default('local'),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().min(1).default('petid'),
+
   FCM_PROJECT_ID: z.string().optional(),
   FCM_CLIENT_EMAIL: z.string().email().optional(),
   FCM_PRIVATE_KEY: z.string().optional(),
+}).superRefine((datos, contexto) => {
+  if (datos.IMAGE_STORAGE_PROVIDER !== 'cloudinary') return;
+
+  for (const campo of [
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+  ]) {
+    if (!datos[campo]?.trim()) {
+      contexto.addIssue({
+        code: 'custom',
+        path: [campo],
+        message: `${campo} es requerida cuando IMAGE_STORAGE_PROVIDER=cloudinary`,
+      });
+    }
+  }
 });
 
 const resultado = envSchema.safeParse(process.env);

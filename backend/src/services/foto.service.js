@@ -1,6 +1,3 @@
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 
 import { sequelize } from '../config/sequelize.js';
@@ -18,15 +15,7 @@ import {
 } from './vision.service.js';
 import { generarVectorVisual, DIMENSIONES_VECTOR } from './embedding.service.js';
 import { env } from '../config/config.js';
-
-const RAIZ = path.resolve(process.cwd(), 'storage', 'imagenes');
-
-async function guardar(buffer, prefijo) {
-  await mkdir(RAIZ, { recursive: true });
-  const nombre = `${prefijo}-${randomUUID()}.webp`;
-  await writeFile(path.join(RAIZ, nombre), buffer, { flag: 'wx' });
-  return { nombre, url: `/storage/imagenes/${nombre}` };
-}
+import { eliminarImagen, guardarImagen } from './almacenamientoImagen.service.js';
 
 function region(caja, ancho, alto) {
   const margen = 0.08;
@@ -116,11 +105,11 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
   const {
     normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
   } = await procesar(archivo.buffer);
-  const original = await guardar(normalizada, 'mascota');
+  const original = await guardarImagen(normalizada, 'mascota');
   let recortada;
 
   try {
-    if (recorte) recortada = await guardar(recorte, 'mascota-crop');
+    if (recorte) recortada = await guardarImagen(recorte, 'mascota-crop');
 
     return await sequelize.transaction(async (transaction) => {
       const cantidad = await FotoMascota.count({
@@ -138,6 +127,9 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
         id_mascota: idMascota,
         url_original: original.url,
         url_recorte: recortada?.url ?? null,
+        proveedor_almacenamiento: original.proveedor,
+        id_almacenamiento_original: original.id,
+        id_almacenamiento_recorte: recortada?.id ?? null,
         es_principal: principal,
       }, { transaction });
       if (vector) {
@@ -161,8 +153,8 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
     });
   } catch (error) {
     await Promise.allSettled([
-      unlink(path.join(RAIZ, original.nombre)),
-      recortada && unlink(path.join(RAIZ, recortada.nombre)),
+      eliminarImagen(original),
+      recortada && eliminarImagen(recortada),
     ].filter(Boolean));
     throw error;
   }
@@ -182,17 +174,20 @@ export async function agregarFotoAvistamiento(idAvistamiento, idUsuario, archivo
   const {
     normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
   } = await procesar(archivo.buffer);
-  const original = await guardar(normalizada, 'avistamiento');
+  const original = await guardarImagen(normalizada, 'avistamiento');
   let recortada;
 
   try {
-    if (recorte) recortada = await guardar(recorte, 'avistamiento-crop');
+    if (recorte) recortada = await guardarImagen(recorte, 'avistamiento-crop');
     const configurado = proveedorVisualConfigurado();
     return await sequelize.transaction(async (transaction) => {
       const foto = await FotoAvistamiento.create({
         id_avistamiento: idAvistamiento,
         url_original: original.url,
         url_recorte: recortada?.url ?? null,
+        proveedor_almacenamiento: original.proveedor,
+        id_almacenamiento_original: original.id,
+        id_almacenamiento_recorte: recortada?.id ?? null,
         tipo_captura: tipoCaptura ?? 'desconocida',
         estado_procesamiento: configurado && !errorProveedor && !errorEmbedding && vector
           ? 'procesada'
@@ -217,8 +212,8 @@ export async function agregarFotoAvistamiento(idAvistamiento, idUsuario, archivo
     });
   } catch (error) {
     await Promise.allSettled([
-      unlink(path.join(RAIZ, original.nombre)),
-      recortada && unlink(path.join(RAIZ, recortada.nombre)),
+      eliminarImagen(original),
+      recortada && eliminarImagen(recortada),
     ].filter(Boolean));
     throw error;
   }
