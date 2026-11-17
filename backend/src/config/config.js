@@ -2,6 +2,11 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+const correoOpcional = z.preprocess(
+  (valor) => typeof valor === 'string' && valor.trim() === '' ? undefined : valor,
+  z.string().email().optional()
+);
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -71,7 +76,7 @@ const envSchema = z.object({
   CLOUDINARY_FOLDER: z.string().min(1).default('petid'),
 
   FCM_PROJECT_ID: z.string().optional(),
-  FCM_CLIENT_EMAIL: z.string().email().optional(),
+  FCM_CLIENT_EMAIL: correoOpcional,
   FCM_PRIVATE_KEY: z.string().optional(),
 }).superRefine((datos, contexto) => {
   if (datos.IMAGE_STORAGE_PROVIDER !== 'cloudinary') return;
