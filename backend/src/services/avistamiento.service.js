@@ -31,6 +31,14 @@ const relacionesPublicas = [{
   as: 'especie',
   attributes: ['id_especie', 'nombre'],
   required: false,
+}, {
+  model: FotoAvistamiento,
+  as: 'fotos',
+  attributes: [
+    'id_foto', 'url_original', 'url_recorte',
+    'tipo_captura', 'estado_procesamiento',
+  ],
+  required: false,
 }];
 
 function verificarId(id) {
@@ -98,6 +106,24 @@ export async function crearAvistamiento(
   };
 }
 
+export async function asignarEspecieDetectada(idAvistamiento, etiqueta) {
+  const etiquetaNormalizada = String(etiqueta).toLowerCase();
+  const nombre = etiquetaNormalizada === 'dog'
+    ? 'Perro'
+    : etiquetaNormalizada === 'cat' ? 'Gato' : null;
+  if (!nombre) return null;
+
+  const avistamiento = await Avistamiento.findByPk(idAvistamiento);
+  if (!avistamiento || avistamiento.id_especie) {
+    return avistamiento?.id_especie ?? null;
+  }
+
+  const especie = await Especie.findOne({ where: { nombre } });
+  if (!especie) return null;
+  await avistamiento.update({ id_especie: especie.id_especie });
+  return especie.id_especie;
+}
+
 // ==========================================
 // LISTADO PÚBLICO
 // ==========================================
@@ -154,9 +180,11 @@ export async function listarMisAvistamientos(
         ...atributosPublicos,
         'ubicacion',
       ],
+      include: relacionesPublicas,
       order: [['fecha_registro', 'DESC']],
       limit: limite,
       offset: (pagina - 1) * limite,
+      distinct: true,
     });
 
   return {

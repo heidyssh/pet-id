@@ -2,10 +2,18 @@ import { Notificacion } from '../models/index.js';
 import { AppError } from '../utils/AppError.js';
 import { validarIdPositivo } from '../utils/ubicacion.js';
 import { emitirAUsuario } from './realtime.service.js';
+import { enviarPushUsuario, pushConfigurado } from './push.service.js';
 
 export async function crearNotificacion(datos, transaction) {
   const item = await Notificacion.create(datos, { transaction });
-  emitirAUsuario(datos.id_usuario, 'notificacion:nueva', item.toJSON());
+  const publicar = () => {
+    emitirAUsuario(datos.id_usuario, 'notificacion:nueva', item.toJSON());
+    if (pushConfigurado()) {
+      void enviarPushUsuario(datos.id_usuario, item.toJSON()).catch(() => {});
+    }
+  };
+  if (transaction) transaction.afterCommit(publicar);
+  else publicar();
   return item;
 }
 

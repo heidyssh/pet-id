@@ -45,6 +45,23 @@ export const Coincidencia = sequelize.define('Coincidencia', {
     },
   },
 
+  puntuacion_visual: {
+    type: DataTypes.DECIMAL(5, 4),
+    allowNull: true,
+    validate: { min: 0, max: 1 },
+  },
+
+  puntuacion_contexto: {
+    type: DataTypes.DECIMAL(5, 4),
+    allowNull: true,
+    validate: { min: 0, max: 1 },
+  },
+
+  detalles: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
+
   estado_revision: {
     type: DataTypes.STRING(20),
     allowNull: false,

@@ -25,12 +25,46 @@ const envSchema = z.object({
     .default('log'),
 
   VISION_PROVIDER: z
-    .enum(['disabled', 'google'])
+    .enum(['disabled', 'google', 'roboflow'])
     .default('disabled'),
 
   GOOGLE_VISION_API_KEY: z.string().optional(),
 
-  GOOGLE_MAPS_SERVER_API_KEY: z.string().optional(),
+  ROBOFLOW_API_KEY: z.string().optional(),
+
+  ROBOFLOW_MODEL_ID: z.string().optional(),
+
+  ROBOFLOW_API_URL: z
+    .string()
+    .url()
+    .default('https://serverless.roboflow.com'),
+
+  DINO_MODEL_ID: z
+    .string()
+    .min(1)
+    .default('onnx-community/dinov2-small'),
+
+  VISUAL_MATCH_MIN_SCORE: z.coerce.number()
+    .min(0)
+    .max(1)
+    .default(0.70),
+
+  VISUAL_MATCH_LIMIT: z.coerce.number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(5),
+
+  GEOAPIFY_API_KEY: z.string().optional(),
+
+  MAP_STYLE_URL: z
+    .string()
+    .url()
+    .default('https://tiles.openfreemap.org/styles/liberty'),
+
+  FCM_PROJECT_ID: z.string().optional(),
+  FCM_CLIENT_EMAIL: z.string().email().optional(),
+  FCM_PRIVATE_KEY: z.string().optional(),
 });
 
 const resultado = envSchema.safeParse(process.env);

@@ -12,7 +12,10 @@
     "db:status": "node src/database/migrate.js status",
     "db:seed": "node src/database/seed.js",
     "test:models": "node tests/modelos.test.js",
-    "test:integration": "node tests/flujos.integration.test.js"
+    "test:integration": "node tests/flujos.integration.test.js",
+    "test:vision": "node tests/vision.test.js",
+    "test:embedding": "node tests/embedding.test.js",
+    "test:visual:e2e": "node tests/visual.e2e.test.js"
   },
   "keywords": [
     "petid",
@@ -32,6 +35,7 @@
   },
   "packageManager": "pnpm@12.16.1",
   "dependencies": {
+    "@huggingface/transformers": "^4.3.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",

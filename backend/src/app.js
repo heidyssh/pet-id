@@ -83,6 +83,9 @@ app.use(
     fallthrough: false,
     index: false,
     maxAge: env.NODE_ENV === 'production' ? '1d' : 0,
+    setHeaders(res) {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
   })
 );
 
@@ -127,14 +130,6 @@ app.use('/api/notificaciones', notificacionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/mapas', mapaRoutes);
 
-
-// Próximos módulos:
-// app.use('/api/usuarios', usuarioRoutes);
-// app.use('/api/mascotas', mascotaRoutes);
-// app.use('/api/extravios', reporteExtravioRoutes);
-// app.use('/api/avistamientos', avistamientoRoutes);
-// app.use('/api/organizaciones', organizacionRoutes);
-// app.use('/api/adopciones', adopcionRoutes);
 
 // ==========================================
 // RUTA NO ENCONTRADA

@@ -1,7 +1,7 @@
 import { sequelize } from '../config/sequelize.js';
 import {
   Usuario, Rol, UsuarioRol, Mascota, ReporteExtravio,
-  Avistamiento, Organizacion, PublicacionAdopcion,
+  Avistamiento, Organizacion, PublicacionAdopcion, Especie,
 } from '../models/index.js';
 import { AppError } from '../utils/AppError.js';
 import { validarIdPositivo } from '../utils/ubicacion.js';
@@ -46,4 +46,74 @@ export async function asignarRoles(idUsuario, nombres) {
     await usuario.increment('token_version', { transaction });
     return { id_usuario: idUsuario, roles: nombres };
   });
+}
+
+function paginacion(count, pagina, limite) {
+  return {
+    pagina,
+    limite,
+    total: count,
+    total_paginas: Math.ceil(count / limite),
+  };
+}
+
+export async function listarOrganizacionesAdmin({ pagina, limite, tipo, verificada }) {
+  const where = {};
+  if (tipo) where.tipo = tipo;
+  if (verificada !== undefined) where.verificada = verificada;
+  const { count, rows } = await Organizacion.findAndCountAll({
+    where,
+    order: [['verificada', 'ASC'], ['id_organizacion', 'DESC']],
+    limit: limite,
+    offset: (pagina - 1) * limite,
+  });
+  return { items: rows, paginacion: paginacion(count, pagina, limite) };
+}
+
+export async function listarExtraviosAdmin({ pagina, limite, estado }) {
+  const where = estado ? { estado } : {};
+  const { count, rows } = await ReporteExtravio.findAndCountAll({
+    where,
+    include: [{
+      model: Mascota,
+      as: 'mascota',
+      attributes: [
+        'id_mascota', 'nombre', 'id_especie',
+        'color_principal', 'tamano',
+      ],
+    }],
+    order: [['fecha_reporte', 'DESC']],
+    limit: limite,
+    offset: (pagina - 1) * limite,
+    distinct: true,
+  });
+  return { items: rows, paginacion: paginacion(count, pagina, limite) };
+}
+
+export async function listarAvistamientosAdmin({ pagina, limite, estado }) {
+  const where = estado ? { estado } : {};
+  const { count, rows } = await Avistamiento.findAndCountAll({
+    where,
+    include: [{
+      model: Especie,
+      as: 'especie',
+      attributes: ['id_especie', 'nombre'],
+      required: false,
+    }],
+    order: [['fecha_registro', 'DESC']],
+    limit: limite,
+    offset: (pagina - 1) * limite,
+    distinct: true,
+  });
+  return { items: rows, paginacion: paginacion(count, pagina, limite) };
+}
+
+export async function cambiarEstadoAvistamiento(idAvistamiento, estado) {
+  if (!validarIdPositivo(idAvistamiento)) {
+    throw new AppError('Avistamiento invalido', 400);
+  }
+  const avistamiento = await Avistamiento.findByPk(idAvistamiento);
+  if (!avistamiento) throw new AppError('Avistamiento no encontrado', 404);
+  await avistamiento.update({ estado });
+  return avistamiento;
 }

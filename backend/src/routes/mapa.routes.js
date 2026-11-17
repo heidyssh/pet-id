@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { geocodificar, reversa } from '../controllers/mapa.controller.js';
+import {
+  geocodificar,
+  reversa,
+  configuracion,
+} from '../controllers/mapa.controller.js';
 
 const router = Router();
 const limiter = rateLimit({
@@ -13,4 +17,5 @@ const limiter = rateLimit({
 
 router.get('/geocodificar', limiter, geocodificar);
 router.get('/geocodificar-reversa', limiter, reversa);
+router.get('/configuracion', configuracion);
 export default router;

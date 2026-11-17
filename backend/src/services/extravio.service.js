@@ -4,6 +4,7 @@ import { sequelize } from '../config/sequelize.js';
 import {
   Mascota,
   ReporteExtravio,
+  FotoMascota,
 } from '../models/index.js';
 
 import { AppError } from '../utils/AppError.js';
@@ -12,6 +13,7 @@ import {
   crearPuntoGeografico,
   validarIdPositivo,
 } from '../utils/ubicacion.js';
+import { notificarSuscriptoresCercanos } from './alertaUbicacion.service.js';
 
 const atributosPublicos = [
   'id_reporte',
@@ -32,6 +34,13 @@ const atributosMascotaPublicos = [
   'senas_particulares',
 ];
 
+const fotosMascotaPublicas = {
+  model: FotoMascota,
+  as: 'fotos',
+  attributes: ['id_foto', 'url_original', 'url_recorte', 'es_principal'],
+  required: false,
+};
+
 function verificarId(id) {
   if (!validarIdPositivo(id)) {
     throw new AppError('Identificador inválido', 400);
@@ -48,7 +57,7 @@ export async function crearReporteExtravio(
   datos,
   idUsuario
 ) {
-  return sequelize.transaction(async (transaction) => {
+  const reporteCreado = await sequelize.transaction(async (transaction) => {
     const mascota = await Mascota.findOne({
       where: {
         id_mascota: datos.id_mascota,
@@ -104,6 +113,9 @@ export async function crearReporteExtravio(
 
     return reporte;
   });
+
+  await notificarSuscriptoresCercanos(reporteCreado.id_reporte);
+  return reporteCreado;
 }
 
 // =========================================
@@ -122,6 +134,7 @@ export async function listarExtraviosPublicos({
         model: Mascota,
         as: 'mascota',
         attributes: atributosMascotaPublicos,
+        include: [fotosMascotaPublicas],
       }],
       order: [['fecha_reporte', 'DESC']],
       limit: limite,
@@ -163,6 +176,7 @@ export async function listarMisExtravios(
         required: true,
         where: { id_dueno: idUsuario },
         attributes: atributosMascotaPublicos,
+        include: [fotosMascotaPublicas],
       }],
       order: [['fecha_reporte', 'DESC']],
       limit: limite,
@@ -196,6 +210,7 @@ export async function obtenerExtravioPublico(idReporte) {
       model: Mascota,
       as: 'mascota',
       attributes: atributosMascotaPublicos,
+      include: [fotosMascotaPublicas],
     }],
   });
 

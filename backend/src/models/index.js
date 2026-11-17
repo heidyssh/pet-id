@@ -19,6 +19,10 @@ import { TokenSeguridad } from './TokenSeguridad.js';
 import { SesionUsuario } from './SesionUsuario.js';
 import { RefreshTokenUsado } from './RefreshTokenUsado.js';
 import { Notificacion } from './Notificacion.js';
+import { VectorVisual } from './VectorVisual.js';
+import { SuscripcionUbicacion } from './SuscripcionUbicacion.js';
+import { AlertaExtravioEnviada } from './AlertaExtravioEnviada.js';
+import { DispositivoPush } from './DispositivoPush.js';
 
 // ==========================================
 // USUARIOS Y ROLES (N:M)
@@ -137,6 +141,16 @@ FotoMascota.belongsTo(Mascota, {
   as: 'mascota',
 });
 
+FotoMascota.hasOne(VectorVisual, {
+  foreignKey: 'id_foto_mascota',
+  as: 'vectorVisual',
+});
+
+VectorVisual.belongsTo(FotoMascota, {
+  foreignKey: 'id_foto_mascota',
+  as: 'fotoMascota',
+});
+
 // ==========================================
 // MASCOTAS Y REPORTES DE EXTRAVÍO (1:N)
 // ==========================================
@@ -191,6 +205,16 @@ Avistamiento.hasMany(FotoAvistamiento, {
 FotoAvistamiento.belongsTo(Avistamiento, {
   foreignKey: 'id_avistamiento',
   as: 'avistamiento',
+});
+
+FotoAvistamiento.hasOne(VectorVisual, {
+  foreignKey: 'id_foto_avistamiento',
+  as: 'vectorVisual',
+});
+
+VectorVisual.belongsTo(FotoAvistamiento, {
+  foreignKey: 'id_foto_avistamiento',
+  as: 'fotoAvistamiento',
 });
 
 // ==========================================
@@ -366,6 +390,36 @@ Notificacion.belongsTo(Usuario, {
   as: 'usuario',
 });
 
+Usuario.hasOne(SuscripcionUbicacion, {
+  foreignKey: 'id_usuario',
+  as: 'suscripcionUbicacion',
+});
+
+SuscripcionUbicacion.belongsTo(Usuario, {
+  foreignKey: 'id_usuario',
+  as: 'usuario',
+});
+
+Usuario.hasMany(AlertaExtravioEnviada, {
+  foreignKey: 'id_usuario',
+  as: 'alertasExtravioEnviadas',
+});
+
+ReporteExtravio.hasMany(AlertaExtravioEnviada, {
+  foreignKey: 'id_reporte',
+  as: 'alertasEnviadas',
+});
+
+Usuario.hasMany(DispositivoPush, {
+  foreignKey: 'id_usuario',
+  as: 'dispositivosPush',
+});
+
+DispositivoPush.belongsTo(Usuario, {
+  foreignKey: 'id_usuario',
+  as: 'usuario',
+});
+
 
   // ==========================================
   // EXPORTACIONES
@@ -392,4 +446,8 @@ Notificacion.belongsTo(Usuario, {
     SesionUsuario,
     RefreshTokenUsado,
     Notificacion,
+    VectorVisual,
+    SuscripcionUbicacion,
+    AlertaExtravioEnviada,
+    DispositivoPush,
   };

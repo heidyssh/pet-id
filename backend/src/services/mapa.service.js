@@ -1,52 +1,70 @@
 import { env } from '../config/config.js';
 import { AppError } from '../utils/AppError.js';
 
-function claveServidor() {
-  if (!env.GOOGLE_MAPS_SERVER_API_KEY) {
-    throw new AppError('Google Maps no tiene credenciales configuradas', 503);
+function claveGeoapify() {
+  if (!env.GEOAPIFY_API_KEY) {
+    throw new AppError('Geoapify no tiene credenciales configuradas', 503);
   }
-  return env.GOOGLE_MAPS_SERVER_API_KEY;
+  return env.GEOAPIFY_API_KEY;
 }
 
-function limpiarResultado(item) {
+function limpiarResultado(feature) {
+  const item = feature.properties;
   return {
-    direccion: item.formatted_address,
+    direccion: item.formatted,
     place_id: item.place_id,
-    tipos: item.types,
+    tipo: item.result_type,
     ubicacion: {
-      latitud: item.geometry.location.lat,
-      longitud: item.geometry.location.lng,
+      latitud: item.lat,
+      longitud: item.lon,
     },
-    viewport: item.geometry.viewport ?? null,
+    bbox: feature.bbox ?? null,
   };
 }
 
-async function consultar(parametros) {
+async function consultar(ruta, parametros) {
   const query = new URLSearchParams({
     ...parametros,
-    key: claveServidor(),
-    language: 'es',
-    region: 'hn',
+    apiKey: claveGeoapify(),
+    lang: 'es',
+    limit: '8',
   });
   const respuesta = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?${query}`,
+    `https://api.geoapify.com/v1/geocode/${ruta}?${query}`,
     { signal: AbortSignal.timeout(10000) }
   );
   if (!respuesta.ok) {
-    throw new AppError('Google Maps no respondió correctamente', 502);
+    throw new AppError('Geoapify no respondió correctamente', 502);
   }
   const cuerpo = await respuesta.json();
-  if (cuerpo.status === 'ZERO_RESULTS') return [];
-  if (cuerpo.status !== 'OK') {
-    throw new AppError('Google Maps rechazó la consulta', 502);
-  }
-  return cuerpo.results.slice(0, 8).map(limpiarResultado);
+  return (cuerpo.features ?? []).slice(0, 8).map(limpiarResultado);
 }
 
 export function geocodificarDireccion(direccion) {
-  return consultar({ address: direccion, components: 'country:HN' });
+  return consultar('search', {
+    text: direccion,
+    filter: 'countrycode:hn',
+  });
 }
 
 export function geocodificacionReversa(latitud, longitud) {
-  return consultar({ latlng: `${latitud},${longitud}`, result_type: 'street_address|route|locality' });
+  return consultar('reverse', {
+    lat: String(latitud),
+    lon: String(longitud),
+    countrycodes: 'hn',
+  });
+}
+
+export function configuracionPublicaMapa() {
+  return {
+    motor: 'maplibre',
+    proveedor_tiles: 'openfreemap',
+    style_url: env.MAP_STYLE_URL,
+    centro_inicial: {
+      latitud: 15.7835,
+      longitud: -86.7918,
+      zoom: 12,
+    },
+    atribucion: '© OpenStreetMap contributors',
+  };
 }

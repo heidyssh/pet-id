@@ -9,12 +9,15 @@ import {
   Avistamiento,
   FotoMascota,
   FotoAvistamiento,
+  VectorVisual,
 } from '../models/index.js';
 import { AppError } from '../utils/AppError.js';
 import {
   detectarAnimal,
   proveedorVisualConfigurado,
 } from './vision.service.js';
+import { generarVectorVisual, DIMENSIONES_VECTOR } from './embedding.service.js';
+import { env } from '../config/config.js';
 
 const RAIZ = path.resolve(process.cwd(), 'storage', 'imagenes');
 
@@ -40,7 +43,7 @@ function region(caja, ancho, alto) {
   };
 }
 
-async function procesar(buffer) {
+async function procesar(buffer, { estricto = false } = {}) {
   let normalizada;
 
   try {
@@ -53,7 +56,19 @@ async function procesar(buffer) {
     throw new AppError('La imagen no es válida o está dañada', 400);
   }
 
-  const deteccion = await detectarAnimal(normalizada);
+  let deteccion = null;
+  let errorProveedor = null;
+  if (proveedorVisualConfigurado()) {
+    try {
+      deteccion = await detectarAnimal(normalizada);
+    } catch (error) {
+      if (!(error instanceof AppError) || error.statusCode < 500) throw error;
+      if (estricto) throw error;
+      errorProveedor = error;
+    }
+  } else if (estricto) {
+    throw new AppError('El proveedor de detección visual no está configurado', 503);
+  }
   let recorte = null;
 
   if (deteccion) {
@@ -65,7 +80,29 @@ async function procesar(buffer) {
       .toBuffer();
   }
 
-  return { normalizada, recorte, deteccion };
+  if (estricto && !recorte) {
+    throw new AppError('No se detectó claramente un perro o gato en la imagen', 422);
+  }
+
+  let vector = null;
+  let errorEmbedding = null;
+  if (recorte) {
+    try {
+      vector = await generarVectorVisual(recorte);
+    } catch (error) {
+      if (estricto) throw error;
+      errorEmbedding = error;
+    }
+  }
+
+  return {
+    normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
+  };
+}
+
+export async function prepararConsultaVisual(archivo) {
+  if (!archivo) throw new AppError('Debe enviar una fotografía', 400);
+  return procesar(archivo.buffer, { estricto: true });
 }
 
 export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrincipal) {
@@ -76,7 +113,9 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
   });
   if (!mascota) throw new AppError('Mascota no encontrada', 404);
 
-  const { normalizada, recorte, deteccion } = await procesar(archivo.buffer);
+  const {
+    normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
+  } = await procesar(archivo.buffer);
   const original = await guardar(normalizada, 'mascota');
   let recortada;
 
@@ -101,10 +140,22 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
         url_recorte: recortada?.url ?? null,
         es_principal: principal,
       }, { transaction });
+      if (vector) {
+        await VectorVisual.create({
+          id_foto_mascota: foto.id_foto,
+          vector,
+          modelo: env.DINO_MODEL_ID,
+          dimensiones: DIMENSIONES_VECTOR,
+        }, { transaction });
+      }
       return {
         ...foto.toJSON(),
         procesamiento: proveedorVisualConfigurado()
-          ? deteccion ? 'animal_detectado' : 'animal_no_detectado'
+          ? errorProveedor
+            ? 'fallida'
+            : deteccion
+              ? errorEmbedding ? 'vector_no_generado' : 'vector_generado'
+              : 'animal_no_detectado'
           : 'proveedor_no_configurado',
       };
     });
@@ -128,18 +179,47 @@ export async function agregarFotoAvistamiento(idAvistamiento, idUsuario, archivo
   });
   if (!avistamiento) throw new AppError('Avistamiento no encontrado', 404);
 
-  const { normalizada, recorte, deteccion } = await procesar(archivo.buffer);
+  const {
+    normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
+  } = await procesar(archivo.buffer);
   const original = await guardar(normalizada, 'avistamiento');
-  const recortada = recorte ? await guardar(recorte, 'avistamiento-crop') : null;
-  const configurado = proveedorVisualConfigurado();
+  let recortada;
 
-  return FotoAvistamiento.create({
-    id_avistamiento: idAvistamiento,
-    url_original: original.url,
-    url_recorte: recortada?.url ?? null,
-    tipo_captura: tipoCaptura ?? 'desconocida',
-    estado_procesamiento: configurado
-      ? deteccion ? 'procesada' : 'fallida'
-      : 'pendiente',
-  });
+  try {
+    if (recorte) recortada = await guardar(recorte, 'avistamiento-crop');
+    const configurado = proveedorVisualConfigurado();
+    return await sequelize.transaction(async (transaction) => {
+      const foto = await FotoAvistamiento.create({
+        id_avistamiento: idAvistamiento,
+        url_original: original.url,
+        url_recorte: recortada?.url ?? null,
+        tipo_captura: tipoCaptura ?? 'desconocida',
+        estado_procesamiento: configurado && !errorProveedor && !errorEmbedding && vector
+          ? 'procesada'
+          : configurado ? 'fallida' : 'pendiente',
+      }, { transaction });
+      if (vector) {
+        await VectorVisual.create({
+          id_foto_avistamiento: foto.id_foto,
+          vector,
+          modelo: env.DINO_MODEL_ID,
+          dimensiones: DIMENSIONES_VECTOR,
+        }, { transaction });
+      }
+      return {
+        ...foto.toJSON(),
+        deteccion: deteccion ? {
+          etiqueta: deteccion.etiqueta,
+          confianza: deteccion.confianza,
+        } : null,
+        vector_generado: Boolean(vector),
+      };
+    });
+  } catch (error) {
+    await Promise.allSettled([
+      unlink(path.join(RAIZ, original.nombre)),
+      recortada && unlink(path.join(RAIZ, recortada.nombre)),
+    ].filter(Boolean));
+    throw error;
+  }
 }

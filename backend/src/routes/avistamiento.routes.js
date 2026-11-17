@@ -8,7 +8,8 @@ import {
   obtenerAvistamientos,
   obtenerMisAvistamientos,
   detalleAvistamiento,
-  registrarAnonimoConFoto,
+  registrarEscaneoAnonimo,
+  registrarEscaneoAutenticado,
 } from '../controllers/avistamiento.controller.js';
 
 import {
@@ -57,7 +58,22 @@ router.post(
   '/anonimo-con-foto',
   limiteAvistamientos,
   subirFoto,
-  registrarAnonimoConFoto
+  registrarEscaneoAnonimo
+);
+
+router.post(
+  '/escanear',
+  limiteAvistamientos,
+  subirFoto,
+  registrarEscaneoAnonimo
+);
+
+router.post(
+  '/escanear/registrado',
+  verificarToken,
+  limiteAvistamientos,
+  subirFoto,
+  registrarEscaneoAutenticado
 );
 
 // Reportar con sesión iniciada

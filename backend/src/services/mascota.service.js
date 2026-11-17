@@ -132,12 +132,14 @@ export async function listarMisMascotas(
       id_dueno: idUsuario,
     },
     attributes: atributosMascota,
+    include: relacionesMascota,
     order: [
       ['fecha_registro', 'DESC'],
       ['id_mascota', 'DESC'],
     ],
     limit: limite,
     offset,
+    distinct: true,
   });
 
   return {

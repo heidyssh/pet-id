@@ -2,7 +2,13 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import {
   listarCoincidenciasReporte,
   revisarCoincidencia,
+  buscarMascotasSimilares,
 } from '../services/coincidencia.service.js';
+
+export const buscarVisuales = asyncHandler(async (req, res) => {
+  const data = await buscarMascotasSimilares(req.file, 5);
+  return res.status(200).json({ success: true, data });
+});
 
 export const listarPorReporte = asyncHandler(async (req, res) => {
   const items = await listarCoincidenciasReporte(

@@ -1,5 +1,13 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { listarNotificaciones, marcarLeida } from '../services/notificacion.service.js';
+import {
+  actualizarUbicacionAlertas,
+  desactivarUbicacionAlertas,
+} from '../services/alertaUbicacion.service.js';
+import {
+  registrarDispositivoPush,
+  eliminarDispositivoPush,
+} from '../services/push.service.js';
 
 export const listar = asyncHandler(async (req, res) => {
   const pagina = Math.max(1, Number(req.query.pagina) || 1);
@@ -13,4 +21,32 @@ export const listar = asyncHandler(async (req, res) => {
 export const leer = asyncHandler(async (req, res) => {
   await marcarLeida(req.params.idNotificacion, req.usuario.id_usuario);
   return res.json({ success: true, message: 'Notificación marcada como leída' });
+});
+
+export const actualizarUbicacion = asyncHandler(async (req, res) => {
+  const data = await actualizarUbicacionAlertas(req.usuario.id_usuario, req.body);
+  return res.json({
+    success: true,
+    message: 'Ubicación de alertas actualizada',
+    data,
+  });
+});
+
+export const desactivarUbicacion = asyncHandler(async (req, res) => {
+  await desactivarUbicacionAlertas(req.usuario.id_usuario);
+  return res.json({ success: true, message: 'Alertas por ubicación desactivadas' });
+});
+
+export const registrarDispositivo = asyncHandler(async (req, res) => {
+  const data = await registrarDispositivoPush(req.usuario.id_usuario, req.body);
+  return res.status(201).json({
+    success: true,
+    message: 'Dispositivo registrado para notificaciones push',
+    data,
+  });
+});
+
+export const eliminarDispositivo = asyncHandler(async (req, res) => {
+  await eliminarDispositivoPush(req.usuario.id_usuario, req.body.token);
+  return res.json({ success: true, message: 'Dispositivo push eliminado' });
 });

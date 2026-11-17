@@ -10,6 +10,7 @@ import { ROLES } from '../constants/roles.js';
 
 export function autorizarOrganizacion({
   tiposPermitidos = ['veterinaria', 'refugio'],
+  cargosPermitidos,
 } = {}) {
   return async (req, res, next) => {
     try {
@@ -56,6 +57,16 @@ export function autorizarOrganizacion({
         return res.status(403).json({
           success: false,
           message: 'No tenés acceso a esta organización',
+        });
+      }
+
+      if (
+        Array.isArray(cargosPermitidos) &&
+        !cargosPermitidos.includes(membresia.cargo)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tenes permisos administrativos en esta organizacion',
         });
       }
 
