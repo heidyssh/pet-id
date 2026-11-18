@@ -1,0 +1,230 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
+
+class ApiError implements Exception {
+  const ApiError(this.message, [this.status]);
+  final String message;
+  final int? status;
+}
+
+class PetIdApi {
+  PetIdApi(this.client);
+  final http.Client client;
+
+  Uri _uri(String path) {
+    const configured = String.fromEnvironment('PETID_API_URL');
+    final base = configured.isNotEmpty
+        ? configured
+        : kDebugMode
+        ? (defaultTargetPlatform == TargetPlatform.android
+              ? 'http://10.0.2.2:3000/api'
+              : 'http://127.0.0.1:3000/api')
+        : '';
+    final uri = Uri.tryParse(base);
+    if (uri == null ||
+        uri.host.isEmpty ||
+        !(uri.scheme == 'https' || (kDebugMode && uri.scheme == 'http'))) {
+      throw const ApiError('Configura la dirección de la API de PetID.');
+    }
+    return uri.replace(
+      path: '${uri.path.replaceFirst(RegExp(r'/+$'), '')}$path',
+    );
+  }
+
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, Object?>? body,
+    String? token,
+    XFile? photo,
+    String capture = 'desconocida',
+  }) async {
+    final uri = _uri(path);
+    final http.BaseRequest request;
+    if (photo == null) {
+      final json = http.Request(method, uri);
+      if (body != null) {
+        json.headers['Content-Type'] = 'application/json';
+        json.body = jsonEncode(body);
+      }
+      request = json;
+    } else {
+      final extension = photo.name.split('.').last.toLowerCase();
+      final subtype = switch (extension) {
+        'jpg' || 'jpeg' => 'jpeg',
+        'png' => 'png',
+        'webp' => 'webp',
+        _ => throw const ApiError('Elige una foto JPG, PNG o WebP.'),
+      };
+      final length = await photo.length();
+      if (length > 5 * 1024 * 1024) {
+        throw const ApiError('La foto supera el límite de 5 MB.');
+      }
+      request = http.MultipartRequest(method, uri)
+        ..fields['datos'] = jsonEncode(body)
+        ..fields['tipo_captura'] = capture
+        ..files.add(
+          http.MultipartFile(
+            'foto',
+            photo.openRead(),
+            length,
+            filename: photo.name,
+            contentType: MediaType('image', subtype),
+          ),
+        );
+    }
+    request.headers['Accept'] = 'application/json';
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    final response = await client
+        .send(request)
+        .then(http.Response.fromStream)
+        .timeout(Duration(seconds: photo == null ? 20 : 90));
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      throw ApiError(
+        'PetID devolvió una respuesta inesperada.',
+        response.statusCode,
+      );
+    }
+    if (decoded is Map<String, dynamic> &&
+        decoded['success'] == true &&
+        response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      return decoded;
+    }
+    final message = decoded is Map ? decoded['message'] : null;
+    throw ApiError(
+      message is String ? message : 'No se pudo completar la solicitud.',
+      response.statusCode,
+    );
+  }
+}
+
+class Session extends ChangeNotifier {
+  Session(this.api);
+  final PetIdApi api;
+  final _storage = const FlutterSecureStorage();
+  static const _key = 'petid.session';
+  Map<String, dynamic>? user;
+  String? _access;
+  bool loading = true;
+  String? restoreError;
+
+  Future<void> restore() async {
+    loading = true;
+    restoreError = null;
+    notifyListeners();
+    try {
+      final saved = await _storage.read(key: _key);
+      if (saved == null) return;
+      final tokens = jsonDecode(saved) as Map<String, dynamic>;
+      var access = tokens['access_token'] as String;
+      Map<String, dynamic> profile;
+      try {
+        profile = (await api.request('GET', '/auth/me', token: access))['data'];
+      } on ApiError catch (error) {
+        if (error.status != 401) rethrow;
+        final renewed =
+            (await api.request(
+                  'POST',
+                  '/sesiones/renovar',
+                  body: {'refresh_token': tokens['refresh_token']},
+                ))['data']
+                as Map<String, dynamic>;
+        await _save(renewed);
+        access = renewed['access_token'] as String;
+        profile = (await api.request('GET', '/auth/me', token: access))['data'];
+      }
+      _access = access;
+      user = profile;
+    } on ApiError catch (error) {
+      if (error.status == 401 || error.status == 403) {
+        _access = null;
+        user = null;
+        try {
+          await _storage.delete(key: _key);
+        } catch (_) {
+          restoreError = 'No se pudo borrar la sesión vencida.';
+        }
+      } else {
+        restoreError = 'No se pudo recuperar tu sesión.';
+      }
+    } catch (_) {
+      restoreError = 'No se pudo recuperar tu sesión.';
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _save(Map<String, dynamic> data) => _storage.write(
+    key: _key,
+    value: jsonEncode({
+      'access_token': data['access_token'],
+      'refresh_token': data['refresh_token'],
+    }),
+  );
+
+  Future<void> login(Map<String, Object?> form) async {
+    final data =
+        (await api.request('POST', '/auth/login', body: form))['data']
+            as Map<String, dynamic>;
+    await _save(data);
+    _access = data['access_token'] as String;
+    user = data['usuario'] as Map<String, dynamic>;
+    restoreError = null;
+    notifyListeners();
+  }
+
+  Future<void> report(
+    Map<String, Object?> data,
+    XFile? photo,
+    String capture,
+  ) async {
+    Future<void> send() async {
+      await api.request(
+        'POST',
+        photo == null
+            ? '/avistamientos/registrado'
+            : '/avistamientos/escanear/registrado',
+        body: data,
+        token: _access,
+        photo: photo,
+        capture: capture,
+      );
+    }
+
+    try {
+      await send();
+    } on ApiError catch (error) {
+      if (error.status != 401) rethrow;
+      await restore();
+      if (user == null || _access == null || restoreError != null) rethrow;
+      await send();
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await api.request('POST', '/sesiones/cerrar', token: _access);
+    } on ApiError catch (error) {
+      if (error.status != 401) rethrow;
+      await restore();
+      if (restoreError != null) throw ApiError(restoreError!);
+      if (user != null) {
+        await api.request('POST', '/sesiones/cerrar', token: _access);
+      }
+    }
+    await _storage.delete(key: _key);
+    user = null;
+    _access = null;
+    notifyListeners();
+  }
+}
