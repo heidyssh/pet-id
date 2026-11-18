@@ -64,7 +64,12 @@ class _Entry extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (session.user case final user?) {
-      return CitizenHome(name: user['nombre']?.toString() ?? '');
+      final givenName = user['nombre']?.toString().trim() ?? '';
+      final familyName = user['apellido']?.toString().trim() ?? '';
+      final fullName = [givenName, familyName]
+          .where((part) => part.isNotEmpty)
+          .join(' ');
+      return CitizenHome(name: fullName);
     }
     return WelcomeScreen(restoreError: session.restoreError);
   }
