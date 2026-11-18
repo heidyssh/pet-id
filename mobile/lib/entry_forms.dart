@@ -118,10 +118,7 @@ class _AccountFormState extends _FormState<AccountForm> {
     r'^(?:\p{L}\p{M}*)+(?: (?:\p{L}\p{M}*)+)?$',
     unicode: true,
   );
-  static final _nameInputPattern = RegExp(
-    r'^(?:(?:\p{L}\p{M}*)+(?: (?:\p{L}\p{M}*)*)?)?$',
-    unicode: true,
-  );
+  static final _nameInputTokens = RegExp(r'\p{L}\p{M}*|\s', unicode: true);
   static final _emailPattern = RegExp(
     r"""^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$""",
   );
@@ -228,20 +225,53 @@ class _AccountFormState extends _FormState<AccountForm> {
       );
   });
 
+  static String _sanitizeNameInput(String text) {
+    final result = StringBuffer();
+    var letters = 0;
+    var hasSpace = false;
+    for (final token in _nameInputTokens.allMatches(text)) {
+      final value = token[0]!;
+      if (_letterPattern.hasMatch(value)) {
+        if (letters == _maxNameLetters) break;
+        result.write(value);
+        letters++;
+      } else if (letters > 0 && letters < _maxNameLetters && !hasSpace) {
+        result.write(' ');
+        hasSpace = true;
+      }
+    }
+    return result.toString();
+  }
+
+  static TextEditingValue _formatNameInput(
+    TextEditingValue previous,
+    TextEditingValue next,
+  ) {
+    if (!next.composing.isCollapsed) return next;
+    final text = _sanitizeNameInput(next.text);
+    if (text == next.text) return next;
+
+    int offset(int index) => index < 0
+        ? text.length
+        : _sanitizeNameInput(next.text.substring(0, index)).length;
+
+    return next.copyWith(
+      text: text,
+      selection: next.selection.copyWith(
+        baseOffset: offset(next.selection.baseOffset),
+        extentOffset: offset(next.selection.extentOffset),
+      ),
+      composing: TextRange.empty,
+    );
+  }
+
   Widget _nameField(TextEditingController controller, String label) =>
       TextFormField(
         controller: controller,
         enabled: !busy,
         textCapitalization: TextCapitalization.words,
         inputFormatters: [
-          TextInputFormatter.withFunction((previous, next) {
-            if (!next.composing.isCollapsed) return next;
-            return _letterPattern.allMatches(next.text).length <=
-                        _maxNameLetters &&
-                    _nameInputPattern.hasMatch(next.text)
-                ? next
-                : previous.copyWith(composing: TextRange.empty);
-          }),
+          TextInputFormatter.withFunction(_formatNameInput),
         ],
         decoration: InputDecoration(
           labelText: label,
