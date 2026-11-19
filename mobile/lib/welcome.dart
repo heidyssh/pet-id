@@ -165,20 +165,7 @@ class WelcomeScreen extends StatelessWidget {
                             SizedBox(height: 12 * scale),
                             Reveal(
                               order: 6,
-                              child: TextButton(
-                                onPressed: () =>
-                                    _open(context, const SightingForm()),
-                                child: Text(
-                                  'Encontré una mascota (sin cuenta)',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: petDarkOrange,
-                                    decoration: TextDecoration.underline,
-                                    fontSize: 14 * scale,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
+                              child: _guestReportButton(context, scale),
                             ),
                             if (restoreError != null)
                               TextButton(
@@ -237,6 +224,80 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
           child: Text(label),
+        ),
+      ),
+    );
+  }
+
+  Widget _guestReportButton(BuildContext context, double scale) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18 * scale),
+    );
+
+    return Pressable(
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: shape,
+          shadows: const [
+            BoxShadow(color: Color(0xFFFFE2D1), offset: Offset(4, 4)),
+          ],
+        ),
+        child: OutlinedButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _open(context, const SightingForm());
+          },
+          style: OutlinedButton.styleFrom(
+            foregroundColor: petDarkOrange,
+            backgroundColor: const Color(0xFFFFF8F3),
+            side: BorderSide(color: const Color(0xFFFFB17C), width: 2 * scale),
+            padding: EdgeInsets.symmetric(
+              horizontal: 16 * scale,
+              vertical: 13 * scale,
+            ),
+            shape: shape,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46 * scale,
+                height: 46 * scale,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE2D1),
+                  borderRadius: BorderRadius.circular(14 * scale),
+                ),
+                child: Icon(Icons.pets_rounded, size: 25 * scale),
+              ),
+              SizedBox(width: 13 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Encontré una mascota',
+                      style: TextStyle(
+                        color: petInk,
+                        fontSize: 16 * scale,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 3 * scale),
+                    Text(
+                      'Reportar sin crear una cuenta',
+                      style: TextStyle(
+                        color: const Color(0xFF687276),
+                        fontSize: 12.5 * scale,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8 * scale),
+              Icon(Icons.arrow_forward_rounded, size: 23 * scale),
+            ],
+          ),
         ),
       ),
     );
