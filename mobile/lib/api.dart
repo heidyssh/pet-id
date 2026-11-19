@@ -61,13 +61,6 @@ class PetIdApi {
     String capture = 'desconocida',
   }) async {
     final uri = _uri(path);
-    if (path == '/auth/google' &&
-        uri.scheme != 'https' &&
-        !(kDebugMode && const {'localhost', '127.0.0.1'}.contains(uri.host))) {
-      throw const ApiError(
-        'El acceso con Google necesita una conexión segura a PetID.',
-      );
-    }
     final http.BaseRequest request;
     if (photo == null) {
       final json = http.Request(method, uri);
@@ -203,10 +196,6 @@ class Session extends ChangeNotifier {
 
   Future<void> login(Map<String, Object?> form) async {
     await _openSession('/auth/login', form);
-  }
-
-  Future<void> loginWithGoogle(String idToken) async {
-    await _openSession('/auth/google', {'id_token': idToken});
   }
 
   Future<void> _openSession(String path, Map<String, Object?> form) async {

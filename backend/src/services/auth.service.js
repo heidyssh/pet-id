@@ -5,9 +5,6 @@ import jwt from 'jsonwebtoken';
 import { sequelize } from '../config/sequelize.js';
 import { Usuario, Rol, UsuarioRol } from '../models/index.js';
 import { AppError } from '../utils/AppError.js';
-import {
-  solicitarVerificacion,
-} from './seguridadCuenta.service.js';
 import { crearSesionConTokens } from './sesion.service.js';
 import { insertarOrganizacion } from './organizacion.service.js';
 import { guardarUbicacionAlertas } from './alertaUbicacion.service.js';
@@ -84,6 +81,7 @@ export async function registrarUsuario(datos) {
         dni: datos.dni ?? null,
         password_hash,
         activo: true,
+        correo_verificado: true,
       }, transaction);
 
       if (datos.organizacion) {
@@ -105,18 +103,9 @@ export async function registrarUsuario(datos) {
     throw error;
   }
 
-  let verificacionEnviada = true;
-  try {
-    await solicitarVerificacion(usuario.correo);
-  } catch {
-    verificacionEnviada = false;
-    console.warn('No se pudo enviar el correo de verificación de una cuenta nueva.');
-  }
-
   return {
     usuario: datosPublicos(usuario),
-    verificacion_enviada: verificacionEnviada,
-    message: 'Revisá tu correo para activar tu cuenta',
+    message: 'Cuenta creada correctamente',
   };
 }
 
@@ -138,13 +127,6 @@ export async function iniciarSesion(datos, agenteUsuario = '') {
     throw new AppError(
       'Correo o contraseña incorrectos',
       401
-    );
-  }
-
-  if (!usuario.correo_verificado) {
-  throw new AppError(
-    'Debés verificar tu correo antes de iniciar sesión',
-    403
     );
   }
 

@@ -190,8 +190,8 @@ class AccountButton extends StatelessWidget {
   final bool primary;
 
   @override
-  Widget build(BuildContext context) => Pressable(
-    child: DecoratedBox(
+  Widget build(BuildContext context) {
+    final button = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
@@ -226,8 +226,9 @@ class AccountButton extends StatelessWidget {
           child: Text(label, key: ValueKey(label), textAlign: TextAlign.center),
         ),
       ),
-    ),
-  );
+    );
+    return Pressable(child: button);
+  }
 }
 
 Widget accountLink(String label, VoidCallback? onPressed) => TextButton(

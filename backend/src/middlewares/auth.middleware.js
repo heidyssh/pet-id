@@ -80,7 +80,6 @@ export async function verificarToken(req, res, next) {
     if (
       !usuario ||
       !usuario.activo ||
-      !usuario.correo_verificado ||
       usuario.token_version !== payload.ver
     ) {
       return noAutorizado(res);

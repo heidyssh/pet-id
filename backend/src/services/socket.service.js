@@ -11,7 +11,7 @@ export async function autenticarSocket(socket, next) {
       Usuario.findByPk(payload.sub),
       SesionUsuario.findOne({ where: { id_sesion: payload.sid, id_usuario: payload.sub, fecha_revocacion: null } }),
     ]);
-    if (!usuario?.activo || !usuario.correo_verificado || !sesion || usuario.token_version !== payload.ver) {
+    if (!usuario?.activo || !sesion || usuario.token_version !== payload.ver) {
       return next(new Error('no autorizado'));
     }
     socket.data.id_usuario = usuario.id_usuario;

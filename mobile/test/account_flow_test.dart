@@ -85,7 +85,7 @@ void main() {
         'telefono': '+50498765432',
       },
     });
-    expect(find.text('¡Cuenta creada!'), findsOneWidget);
+    expect(find.text('¡Hola de nuevo!'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

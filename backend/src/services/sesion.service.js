@@ -178,8 +178,7 @@ export async function renovarSesion(refreshToken) {
 
     if (
       !usuario ||
-      !usuario.activo ||
-      !usuario.correo_verificado
+      !usuario.activo
     ) {
       await sesion.update({
         fecha_revocacion: ahora,

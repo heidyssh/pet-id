@@ -7,10 +7,6 @@ on:
         description: "URL de PetID API accesible desde el celular (ej. http://192.168.1.20:3000/api)"
         required: true
         type: string
-      google_client_id:
-        description: "ID de cliente web de Google (opcional)"
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -55,11 +51,9 @@ jobs:
       - name: Generar APK
         env:
           PETID_API_URL: ${{ inputs.api_url }}
-          PETID_GOOGLE_CLIENT_ID: ${{ inputs.google_client_id }}
         run: >-
           flutter build apk --debug
           --dart-define=PETID_API_URL="$PETID_API_URL"
-          --dart-define=PETID_GOOGLE_CLIENT_ID="$PETID_GOOGLE_CLIENT_ID"
 
       - name: Guardar APK para descargar
         uses: actions/upload-artifact@v4

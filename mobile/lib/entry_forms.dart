@@ -10,7 +10,6 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
-import 'google_account.dart';
 import 'motion.dart';
 import 'pet_camera.dart';
 import 'welcome.dart';
@@ -140,15 +139,9 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
 }
 
 class AccountForm extends StatefulWidget {
-  const AccountForm({
-    super.key,
-    this.register = false,
-    this.initialEmail = '',
-    this.offerVerification = false,
-  });
+  const AccountForm({super.key, this.register = false, this.initialEmail = ''});
   final bool register;
   final String initialEmail;
-  final bool offerVerification;
 
   @override
   State<AccountForm> createState() => _AccountFormState();
@@ -169,7 +162,6 @@ class _AccountFormState extends _FormState<AccountForm> {
   late final _email = TextEditingController(text: widget.initialEmail);
   final _password = TextEditingController();
   bool _hide = true;
-  late bool _verificationNeeded = widget.offerVerification;
   bool _organization = false;
   String _organizationType = 'veterinaria';
   bool _locationAlerts = false;
@@ -197,7 +189,7 @@ class _AccountFormState extends _FormState<AccountForm> {
       final phone = '+504${_phone.text}';
       final location = _locationAlerts ? await _readAlertLocation() : null;
       if (!mounted) return;
-      final response = await api.request(
+      await api.request(
         'POST',
         '/auth/registro',
         body: {
@@ -215,33 +207,22 @@ class _AccountFormState extends _FormState<AccountForm> {
         },
       );
       if (!mounted) return;
-      final result = response['data'];
-      final verify = await _showRegistrationConfirmation(
-        email,
-        sent: result is! Map || result['verificacion_enviada'] != false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _organization
+                ? 'Cuenta creada. Tu organización quedó pendiente de revisión.'
+                : '¡Cuenta creada! Ya puedes usar PetID.',
+          ),
+        ),
       );
-      if (!mounted) return;
-      final verified = verify == true && await _openHelp(verify: true);
-      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              AccountForm(initialEmail: email, offerVerification: !verified),
+          builder: (_) => AccountForm(initialEmail: email),
         ),
       );
     } else {
-      try {
-        await context.read<Session>().login(credentials);
-      } on ApiError catch (exception) {
-        if (mounted) {
-          setState(
-            () => _verificationNeeded =
-                exception.status == 403 &&
-                exception.message.toLowerCase().contains('verific'),
-          );
-        }
-        rethrow;
-      }
+      await context.read<Session>().login(credentials);
       if (mounted) Navigator.of(context).pop();
     }
   });
@@ -281,14 +262,6 @@ class _AccountFormState extends _FormState<AccountForm> {
     }
   }
 
-  Future<void> _loginWithGoogle() => perform(() async {
-    final session = context.read<Session>();
-    final token = await GoogleAccount.idToken();
-    if (!mounted || token == null) return;
-    await session.loginWithGoogle(token);
-    if (mounted) Navigator.of(context).pop();
-  });
-
   void _changeMode({required bool register}) {
     final email = _email.text.trim();
     Navigator.of(context).pushReplacement(
@@ -298,85 +271,13 @@ class _AccountFormState extends _FormState<AccountForm> {
     );
   }
 
-  Future<bool> _openHelp({bool verify = false}) async {
-    final completed = await Navigator.of(context).push<bool>(
+  Future<void> _openHelp() async {
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => _AccountHelp(email: _email.text.trim(), verify: verify),
+        builder: (_) => _AccountHelp(email: _email.text.trim()),
       ),
     );
-    if (mounted && completed == true) {
-      setState(() {
-        error = null;
-        _verificationNeeded = false;
-      });
-    }
-    return completed == true;
   }
-
-  Future<bool?> _showRegistrationConfirmation(
-    String email, {
-    required bool sent,
-  }) => showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: petCream,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: petOrange),
-      ),
-      icon: const CircleAvatar(
-        backgroundColor: petOrange,
-        foregroundColor: petInk,
-        radius: 26,
-        child: Icon(Icons.check_rounded, size: 30),
-      ),
-      title: const Text(
-        '¡Cuenta creada!',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: petInk, fontWeight: FontWeight.bold),
-      ),
-      content: Text(
-        [
-          if (sent)
-            'Revisa $email y copia el enlace de verificación.'
-          else
-            'No pudimos enviar el correo. Puedes solicitar otro desde el inicio de sesión.',
-          if (_organization) 'La organización quedó pendiente de revisión.',
-        ].join('\n\n'),
-        textAlign: TextAlign.center,
-      ),
-      actionsAlignment: MainAxisAlignment.center,
-      actions: [
-        if (sent)
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Verificar mi correo'),
-          ),
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Ir a iniciar sesión'),
-        ),
-      ],
-    ),
-  );
-
-  Future<void> _resend() => perform(() async {
-    await context.read<PetIdApi>().request(
-      'POST',
-      '/auth/reenviar-verificacion',
-      body: {'correo': _email.text.trim()},
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Si tu cuenta está pendiente, recibirás un correo de verificación.',
-          ),
-        ),
-      );
-    }
-  });
 
   static String _sanitizeNameInput(String text) {
     final result = StringBuffer();
@@ -621,14 +522,6 @@ class _AccountFormState extends _FormState<AccountForm> {
                       'tucorreo@ejemplo.com',
                       icon: register ? null : Icons.mail_outline_rounded,
                     ),
-                    onChanged: (_) {
-                      if (_verificationNeeded) {
-                        setState(() {
-                          _verificationNeeded = false;
-                          error = null;
-                        });
-                      }
-                    },
                     validator: _validateEmail,
                   ),
                 ),
@@ -701,52 +594,11 @@ class _AccountFormState extends _FormState<AccountForm> {
             ),
           ),
         if (error case final message?) accountError(context, message),
-        if (_verificationNeeded) ...[
-          accountLink(
-            'Verificar mi correo',
-            busy ? null : () => _openHelp(verify: true),
-          ),
-          accountLink('Reenviar correo de verificación', busy ? null : _resend),
-        ],
         const SizedBox(height: 12),
         AccountButton(
           busy ? 'Un momento…' : submitLabel,
           onPressed: busy ? null : _submitValidated,
         ),
-        if (!register) ...[
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 22),
-            child: Row(
-              children: [
-                Expanded(child: Divider(color: accountBorder, thickness: 2)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'o continúa con',
-                    style: TextStyle(color: accountMuted),
-                  ),
-                ),
-                Expanded(child: Divider(color: accountBorder, thickness: 2)),
-              ],
-            ),
-          ),
-          AccountButton(
-            'Google',
-            primary: false,
-            onPressed: busy || !GoogleAccount.available
-                ? null
-                : _loginWithGoogle,
-          ),
-          if (!GoogleAccount.available)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: Text(
-                'Google aún no está disponible.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: accountMuted),
-              ),
-            ),
-        ],
       ],
     );
   }
@@ -759,9 +611,8 @@ class _AccountFormState extends _FormState<AccountForm> {
 }
 
 class _AccountHelp extends StatefulWidget {
-  const _AccountHelp({required this.email, required this.verify});
+  const _AccountHelp({required this.email});
   final String email;
-  final bool verify;
 
   @override
   State<_AccountHelp> createState() => _AccountHelpState();
@@ -775,7 +626,7 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
   bool _hidePassword = true;
   String? _notice;
 
-  bool get _usingLink => widget.verify || _hasLink;
+  bool get _usingLink => _hasLink;
 
   @override
   void dispose() {
@@ -812,20 +663,13 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
     }
     await api.request(
       'POST',
-      widget.verify ? '/auth/verificar-correo' : '/auth/restablecer-contrasena',
-      body: {
-        'token': _token(_link.text),
-        if (!widget.verify) 'password': _password.text,
-      },
+      '/auth/restablecer-contrasena',
+      body: {'token': _token(_link.text), 'password': _password.text},
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          widget.verify
-              ? 'Correo verificado. Ya puedes iniciar sesión.'
-              : 'Contraseña actualizada. Ya puedes iniciar sesión.',
-        ),
+        content: Text('Contraseña actualizada. Ya puedes iniciar sesión.'),
       ),
     );
     Navigator.of(context).pop(true);
@@ -833,7 +677,7 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
 
   @override
   Widget build(BuildContext context) => AccountLayout(
-    title: widget.verify ? 'Verifica tu correo' : 'Recupera tu contraseña',
+    title: 'Recupera tu contraseña',
     subtitle: _usingLink
         ? 'Copia y pega el enlace del correo de PetID.'
         : 'Te enviaremos un enlace para cambiar tu contraseña.',
@@ -876,7 +720,7 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                       : null,
                 ),
               ),
-            if (_usingLink && !widget.verify)
+            if (_usingLink)
               AccountField(
                 'Nueva contraseña',
                 TextFormField(
@@ -911,8 +755,6 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
       AccountButton(
         busy
             ? 'Un momento…'
-            : widget.verify
-            ? 'Verificar correo'
             : _usingLink
             ? 'Guardar contraseña'
             : 'Enviar enlace',
@@ -924,17 +766,16 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                 _submit();
               },
       ),
-      if (!widget.verify)
-        accountLink(
-          _usingLink ? 'Solicitar otro enlace' : 'Ya tengo el enlace',
-          busy
-              ? null
-              : () => setState(() {
-                  _hasLink = !_hasLink;
-                  error = null;
-                  _notice = null;
-                }),
-        ),
+      accountLink(
+        _usingLink ? 'Solicitar otro enlace' : 'Ya tengo el enlace',
+        busy
+            ? null
+            : () => setState(() {
+                _hasLink = !_hasLink;
+                error = null;
+                _notice = null;
+              }),
+      ),
     ],
   );
 }
@@ -953,6 +794,8 @@ class _SightingFormState extends _FormState<SightingForm> {
   final _picker = ImagePicker();
   XFile? _photo;
   String _capture = 'desconocida';
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -986,18 +829,28 @@ class _SightingFormState extends _FormState<SightingForm> {
       imageQuality: 85,
       requestFullMetadata: false,
     );
-    if (mounted && photo != null) setState(() => _photo = photo);
+    if (mounted && photo != null) {
+      setState(() {
+        _photo = photo;
+        _latitude = null;
+        _longitude = null;
+      });
+    }
   });
 
   Future<void> _takePhoto() async {
     if (busy) return;
-    final photo = await Navigator.of(context).push<XFile>(
-      MaterialPageRoute<XFile>(builder: (_) => const PetCameraPage()),
+    final capture = await Navigator.of(context).push<PetCaptureResult>(
+      MaterialPageRoute<PetCaptureResult>(
+        builder: (_) => const PetCameraPage(),
+      ),
     );
-    if (mounted && photo != null) {
+    if (mounted && capture != null) {
       setState(() {
-        _photo = photo;
+        _photo = capture.photo;
         _capture = 'desconocida';
+        _latitude = capture.latitude;
+        _longitude = capture.longitude;
       });
     }
   }
@@ -1007,6 +860,8 @@ class _SightingFormState extends _FormState<SightingForm> {
       'referencia_lugar': _place.text.trim(),
       'descripcion': _description.text.trim(),
       'fecha_avistamiento': DateTime.now().toUtc().toIso8601String(),
+      if (_latitude != null && _longitude != null)
+        'ubicacion': {'latitud': _latitude, 'longitud': _longitude},
     };
     final photo = _photo;
     if (widget.signedIn) {
@@ -1113,8 +968,14 @@ class _SightingFormState extends _FormState<SightingForm> {
                 onRemove: () => setState(() {
                   _photo = null;
                   _capture = 'desconocida';
+                  _latitude = null;
+                  _longitude = null;
                 }),
               ),
+              if (_latitude != null && _longitude != null) ...[
+                const SizedBox(height: 10),
+                const _LocationAttachedBadge(),
+              ],
               const SizedBox(height: 16),
               const Text(
                 '¿A qué distancia tomaste la foto?',
@@ -1279,5 +1140,35 @@ class _CaptureDistance extends StatelessWidget {
           ),
         ),
     ],
+  );
+}
+
+class _LocationAttachedBadge extends StatelessWidget {
+  const _LocationAttachedBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: const Color(0xFFDDF5EE),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFF98D8C9)),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.location_on_rounded, color: Color(0xFF16816D), size: 20),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Ubicación agregada al reporte',
+            style: TextStyle(
+              color: Color(0xFF166A5B),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Icon(Icons.check_circle_rounded, color: Color(0xFF16816D), size: 19),
+      ],
+    ),
   );
 }
