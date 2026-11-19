@@ -12,6 +12,7 @@ import 'account_layout.dart';
 import 'api.dart';
 import 'google_account.dart';
 import 'motion.dart';
+import 'pet_camera.dart';
 import 'welcome.dart';
 
 String _errorMessage(Object error) => switch (error) {
@@ -988,6 +989,19 @@ class _SightingFormState extends _FormState<SightingForm> {
     if (mounted && photo != null) setState(() => _photo = photo);
   });
 
+  Future<void> _takePhoto() async {
+    if (busy) return;
+    final photo = await Navigator.of(context).push<XFile>(
+      MaterialPageRoute<XFile>(builder: (_) => const PetCameraPage()),
+    );
+    if (mounted && photo != null) {
+      setState(() {
+        _photo = photo;
+        _capture = 'desconocida';
+      });
+    }
+  }
+
   Future<void> _report() => perform(() async {
     final data = {
       'referencia_lugar': _place.text.trim(),
@@ -1015,78 +1029,255 @@ class _SightingFormState extends _FormState<SightingForm> {
     Navigator.of(context).pop();
   });
 
+  void _submitValidated() {
+    if (busy || !form.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+    _report();
+  }
+
   @override
-  Widget build(BuildContext context) => page(
-    'Reportar avistamiento',
-    [
-      TextFormField(
-        controller: _place,
-        enabled: !busy,
-        maxLength: 500,
-        decoration: const InputDecoration(
-          labelText: '¿Dónde viste a la mascota?',
-          helperText: 'Escribe el barrio, calle o un punto de referencia.',
-          helperMaxLines: 2,
-        ),
-        validator: _required,
-      ),
-      TextFormField(
-        controller: _description,
-        enabled: !busy,
-        maxLines: 4,
-        maxLength: 3000,
-        decoration: const InputDecoration(labelText: 'Describe a la mascota'),
-        validator: _required,
-      ),
-      const Text('Foto opcional'),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: busy ? null : () => _pick(ImageSource.camera),
-            icon: const Icon(Icons.photo_camera_outlined),
-            label: const Text('Tomar foto'),
-          ),
-          OutlinedButton.icon(
-            onPressed: busy ? null : () => _pick(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Galería'),
-          ),
-        ],
-      ),
-      if (_photo case final photo?) ...[
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.image_outlined),
-          title: Text(photo.name),
-          trailing: IconButton(
-            tooltip: 'Quitar foto',
-            onPressed: busy
-                ? null
-                : () => setState(() {
-                    _photo = null;
-                    _capture = 'desconocida';
-                  }),
-            icon: const Icon(Icons.close),
-          ),
-        ),
-        DropdownButtonFormField<String>(
-          value: _capture,
-          decoration: const InputDecoration(labelText: 'Distancia de la foto'),
-          items: const [
-            DropdownMenuItem(
-              value: 'desconocida',
-              child: Text('No estoy segura/o'),
+  Widget build(BuildContext context) => AccountLayout(
+    title: 'Reportar avistamiento',
+    subtitle:
+        'Comparte lo que viste. Una foto clara puede ayudar a encontrar a su familia.',
+    busy: busy,
+    children: [
+      Form(
+        key: form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AccountField(
+              '¿Dónde viste a la mascota?',
+              TextFormField(
+                controller: _place,
+                enabled: !busy,
+                maxLength: 500,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: accountInput(
+                  'Barrio, calle o punto de referencia',
+                  icon: Icons.location_on_outlined,
+                ),
+                validator: _required,
+              ),
             ),
-            DropdownMenuItem(value: 'cerca', child: Text('De cerca')),
-            DropdownMenuItem(value: 'lejos', child: Text('De lejos')),
+            AccountField(
+              'Describe a la mascota',
+              TextFormField(
+                controller: _description,
+                enabled: !busy,
+                minLines: 4,
+                maxLines: 6,
+                maxLength: 3000,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: accountInput(
+                  'Color, tamaño, collar, señas particulares...',
+                ).copyWith(alignLabelWithHint: true),
+                validator: _required,
+              ),
+            ),
+            const Text(
+              'Foto de la mascota',
+              style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 5),
+            const Text(
+              'Opcional, pero ayuda a buscar coincidencias.',
+              style: TextStyle(color: accountMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _MediaActionButton(
+                    icon: Icons.photo_camera_outlined,
+                    label: 'Tomar foto',
+                    onPressed: busy ? null : _takePhoto,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MediaActionButton(
+                    icon: Icons.photo_library_outlined,
+                    label: 'Galería',
+                    onPressed: busy ? null : () => _pick(ImageSource.gallery),
+                  ),
+                ),
+              ],
+            ),
+            if (_photo case final photo?) ...[
+              const SizedBox(height: 14),
+              _SelectedPhotoCard(
+                photo: photo,
+                enabled: !busy,
+                onRemove: () => setState(() {
+                  _photo = null;
+                  _capture = 'desconocida';
+                }),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '¿A qué distancia tomaste la foto?',
+                style: TextStyle(color: petInk, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 9),
+              _CaptureDistance(
+                value: _capture,
+                enabled: !busy,
+                onChanged: (value) => setState(() => _capture = value),
+              ),
+            ],
+            if (error case final message?) ...[
+              const SizedBox(height: 16),
+              accountError(context, message),
+            ],
+            const SizedBox(height: 22),
+            AccountButton(
+              busy ? 'Enviando reporte...' : 'Enviar reporte',
+              onPressed: busy ? null : _submitValidated,
+            ),
           ],
-          onChanged: busy ? null : (value) => setState(() => _capture = value!),
+        ),
+      ),
+    ],
+  );
+}
+
+class _MediaActionButton extends StatelessWidget {
+  const _MediaActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: onPressed,
+    icon: Icon(icon, size: 21),
+    label: Text(label),
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(54),
+      foregroundColor: petDarkOrange,
+      backgroundColor: Colors.white,
+      disabledForegroundColor: accountMuted.withValues(alpha: .45),
+      side: const BorderSide(color: accountBorder, width: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+    ),
+  );
+}
+
+class _SelectedPhotoCard extends StatelessWidget {
+  const _SelectedPhotoCard({
+    required this.photo,
+    required this.enabled,
+    required this.onRemove,
+  });
+
+  final XFile photo;
+  final bool enabled;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: accountBorder, width: 2),
+    ),
+    child: Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox.square(
+            dimension: 66,
+            child: FutureBuilder(
+              future: photo.readAsBytes(),
+              builder: (context, snapshot) {
+                final bytes = snapshot.data;
+                if (bytes == null) {
+                  return const ColoredBox(
+                    color: Color(0xFFFFE8D8),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                return Image.memory(bytes, fit: BoxFit.cover);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Foto lista para escanear',
+                style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                photo.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: accountMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Quitar foto',
+          onPressed: enabled ? onRemove : null,
+          icon: const Icon(Icons.close_rounded),
         ),
       ],
+    ),
+  );
+}
+
+class _CaptureDistance extends StatelessWidget {
+  const _CaptureDistance({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final String value;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final option in const [
+        ('desconocida', 'No sé'),
+        ('cerca', 'De cerca'),
+        ('lejos', 'De lejos'),
+      ])
+        ChoiceChip(
+          label: Text(option.$2),
+          selected: value == option.$1,
+          onSelected: enabled ? (_) => onChanged(option.$1) : null,
+          showCheckmark: false,
+          selectedColor: const Color(0xFFFFDCC5),
+          backgroundColor: Colors.white,
+          side: BorderSide(
+            color: value == option.$1 ? petOrange : accountBorder,
+            width: 1.7,
+          ),
+          shape: const StadiumBorder(),
+          labelStyle: TextStyle(
+            color: value == option.$1 ? petDarkOrange : accountMuted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
     ],
-    'Enviar reporte',
-    _report,
   );
 }

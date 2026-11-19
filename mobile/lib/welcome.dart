@@ -230,74 +230,32 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   Widget _guestReportButton(BuildContext context, double scale) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18 * scale),
-    );
-
-    return Pressable(
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shape: shape,
-          shadows: const [
-            BoxShadow(color: Color(0xFFFFE2D1), offset: Offset(4, 4)),
-          ],
-        ),
-        child: OutlinedButton(
+    return Align(
+      child: Pressable(
+        child: TextButton.icon(
           onPressed: () {
             HapticFeedback.lightImpact();
             _open(context, const SightingForm());
           },
-          style: OutlinedButton.styleFrom(
+          style: TextButton.styleFrom(
             foregroundColor: petDarkOrange,
-            backgroundColor: const Color(0xFFFFF8F3),
-            side: BorderSide(color: const Color(0xFFFFB17C), width: 2 * scale),
-            padding: EdgeInsets.symmetric(
-              horizontal: 16 * scale,
-              vertical: 13 * scale,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: const Color(0xFFFDE1D1),
+              width: 1.6 * scale,
             ),
-            shape: shape,
+            padding: EdgeInsets.symmetric(
+              horizontal: 17 * scale,
+              vertical: 11 * scale,
+            ),
+            shape: const StadiumBorder(),
+            textStyle: TextStyle(
+              fontSize: 13.5 * scale,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 46 * scale,
-                height: 46 * scale,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFE2D1),
-                  borderRadius: BorderRadius.circular(14 * scale),
-                ),
-                child: Icon(Icons.pets_rounded, size: 25 * scale),
-              ),
-              SizedBox(width: 13 * scale),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Encontré una mascota',
-                      style: TextStyle(
-                        color: petInk,
-                        fontSize: 16 * scale,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 3 * scale),
-                    Text(
-                      'Reportar sin crear una cuenta',
-                      style: TextStyle(
-                        color: const Color(0xFF687276),
-                        fontSize: 12.5 * scale,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 8 * scale),
-              Icon(Icons.arrow_forward_rounded, size: 23 * scale),
-            ],
-          ),
+          icon: Icon(Icons.pets_outlined, size: 19 * scale),
+          label: const Text('Reportar una mascota sin cuenta'),
         ),
       ),
     );
