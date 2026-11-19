@@ -1,0 +1,63 @@
+name: Generar APK Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "URL de PetID API accesible desde el celular (ej. http://192.168.1.20:3000/api)"
+        required: true
+        type: string
+      google_client_id:
+        description: "ID de cliente web de Google (opcional)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: petid-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Compilar APK de prueba
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Descargar el proyecto
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.2"
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Revisar el código
+        run: flutter analyze
+
+      - name: Generar APK
+        env:
+          PETID_API_URL: ${{ inputs.api_url }}
+          PETID_GOOGLE_CLIENT_ID: ${{ inputs.google_client_id }}
+        run: >-
+          flutter build apk --debug
+          --dart-define=PETID_API_URL="$PETID_API_URL"
+          --dart-define=PETID_GOOGLE_CLIENT_ID="$PETID_GOOGLE_CLIENT_ID"
+
+      - name: Guardar APK para descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: PetID-Android-${{ github.run_number }}
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

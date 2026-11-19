@@ -31,6 +31,28 @@ flutter run -d $petidDevice --dart-define=PETID_API_URL=http://127.0.0.1:3000/ap
 
 Para compilar en modo release, configura `PETID_API_URL` con una URL HTTPS.
 
+### Generar el APK sin ocupar espacio local
+
+El workflow **Generar APK Android** compila la aplicación en GitHub y permite
+descargar solamente el APK. No requiere instalar Gradle ni generar la carpeta
+`build/` en la computadora.
+
+1. Conecta la computadora y el teléfono al mismo Wi-Fi.
+2. Ejecuta `ipconfig` y busca la dirección IPv4 de la computadora, por ejemplo
+   `192.168.1.20`.
+3. Inicia el backend con `pnpm dev` y permite Node.js en la red privada si
+   Windows muestra una solicitud del firewall.
+4. Sube los cambios a GitHub y abre **Actions > Generar APK Android > Run
+   workflow**.
+5. En `api_url`, escribe `http://IP_DE_LA_COMPUTADORA:3000/api`; por ejemplo,
+   `http://192.168.1.20:3000/api`. El ID web de Google es opcional.
+6. Cuando termine, abre la ejecución, descarga el artefacto
+   `PetID-Android-N`, descomprímelo e instala `app-debug.apk` en el teléfono.
+
+El APK de desarrollo permite HTTP para comunicarse con el backend local. Solo
+funcionará mientras el backend esté encendido y ambos dispositivos puedan
+verse en la misma red. La versión de producción continúa exigiendo HTTPS.
+
 ### Acceso y registro
 
 Desde `backend/`, ejecuta `pnpm install` y `pnpm db:migrate` antes de iniciar
