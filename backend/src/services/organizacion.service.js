@@ -11,22 +11,26 @@ import { AppError } from '../utils/AppError.js';
 import { validarIdPositivo } from '../utils/ubicacion.js';
 
 export async function crearOrganizacion(datos, idUsuario) {
-  return sequelize.transaction(async (transaction) => {
-    const organizacion = await Organizacion.create({
-      nombre: datos.nombre,
-      tipo: datos.tipo,
-      direccion: datos.direccion ?? null,
-      telefono: datos.telefono ?? null,
-      verificada: false,
-    }, { transaction });
-    await UsuarioOrganizacion.create({
-      id_usuario: idUsuario,
-      id_organizacion: organizacion.id_organizacion,
-      cargo: datos.cargo,
-      activo: true,
-    }, { transaction });
-    return organizacion;
-  });
+  return sequelize.transaction((transaction) =>
+    insertarOrganizacion(datos, idUsuario, transaction)
+  );
+}
+
+export async function insertarOrganizacion(datos, idUsuario, transaction) {
+  const organizacion = await Organizacion.create({
+    nombre: datos.nombre,
+    tipo: datos.tipo,
+    direccion: datos.direccion ?? null,
+    telefono: datos.telefono ?? null,
+    verificada: false,
+  }, { transaction });
+  await UsuarioOrganizacion.create({
+    id_usuario: idUsuario,
+    id_organizacion: organizacion.id_organizacion,
+    cargo: datos.cargo ?? 'administrador',
+    activo: true,
+  }, { transaction });
+  return organizacion;
 }
 
 export async function listarOrganizaciones({ tipo } = {}) {

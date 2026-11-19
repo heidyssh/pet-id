@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'api.dart';
 import 'entry_forms.dart';
+import 'motion.dart';
 
 const petCream = Color(0xFFFCF7F2);
 const petOrange = Color(0xFFFF8D42);
@@ -34,12 +36,19 @@ class WelcomeScreen extends StatelessWidget {
                       Positioned(
                         top: 50 * scale,
                         right: -30 * scale,
-                        child: _circle(160 * scale, const Color(0xFFFFEAC1)),
+                        child: Float(
+                          distance: 14 * scale,
+                          child: _circle(160 * scale, const Color(0xFFFFEAC1)),
+                        ),
                       ),
                       Positioned(
                         top: 310 * scale,
                         left: -50 * scale,
-                        child: _circle(180 * scale, const Color(0xFFFFE0E4)),
+                        child: Float(
+                          distance: 18 * scale,
+                          period: const Duration(milliseconds: 4200),
+                          child: _circle(180 * scale, const Color(0xFFFFE0E4)),
+                        ),
                       ),
                       Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -51,101 +60,123 @@ class WelcomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 53 * scale,
-                                  height: 53 * scale,
-                                  decoration: BoxDecoration(
-                                    color: petOrange,
-                                    borderRadius: BorderRadius.circular(
-                                      16 * scale,
-                                    ),
-                                    border: Border.all(
-                                      color: const Color(0xFFE87D35),
-                                      width: 2.4 * scale,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0xFFFFD5BB),
-                                        offset: Offset(3, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: _paw(25 * scale, petInk),
-                                ),
-                                SizedBox(width: 10 * scale),
-                                Text(
-                                  'PetID',
-                                  style: TextStyle(
-                                    color: petInk,
-                                    fontSize: 27 * scale,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 36 * scale),
-                            _HeroPanel(scale: scale),
-                            SizedBox(height: 38 * scale),
-                            Text.rich(
-                              const TextSpan(
+                            Reveal(
+                              child: Row(
                                 children: [
-                                  TextSpan(
-                                    text:
-                                        'Que toda mascota encuentre el camino ',
+                                  Container(
+                                    width: 53 * scale,
+                                    height: 53 * scale,
+                                    decoration: BoxDecoration(
+                                      color: petOrange,
+                                      borderRadius: BorderRadius.circular(
+                                        16 * scale,
+                                      ),
+                                      border: Border.all(
+                                        color: const Color(0xFFE87D35),
+                                        width: 2.4 * scale,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0xFFFFD5BB),
+                                          offset: Offset(3, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Wiggle(
+                                      angle: 0.35,
+                                      child: _paw(25 * scale, petInk),
+                                    ),
                                   ),
-                                  TextSpan(
-                                    text: 'de vuelta a casa',
-                                    style: TextStyle(color: Color(0xFFC75308)),
+                                  SizedBox(width: 10 * scale),
+                                  Text(
+                                    'PetID',
+                                    style: TextStyle(
+                                      color: petInk,
+                                      fontSize: 27 * scale,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ],
                               ),
-                              style: TextStyle(
-                                color: petInk,
-                                fontSize: 32 * scale,
-                                height: 1.14,
-                                fontWeight: FontWeight.w900,
+                            ),
+                            SizedBox(height: 36 * scale),
+                            Reveal(order: 1, child: _HeroPanel(scale: scale)),
+                            SizedBox(height: 38 * scale),
+                            Reveal(
+                              order: 2,
+                              child: Text.rich(
+                                const TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text:
+                                          'Que toda mascota encuentre el camino ',
+                                    ),
+                                    TextSpan(
+                                      text: 'de vuelta a casa',
+                                      style: TextStyle(
+                                        color: Color(0xFFC75308),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                style: TextStyle(
+                                  color: petInk,
+                                  fontSize: 32 * scale,
+                                  height: 1.14,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                             SizedBox(height: 16 * scale),
-                            Text(
-                              'Registra a tu mascota, recibe alertas de tu zona en La Ceiba y reporta avistamientos en segundos.',
-                              style: TextStyle(
-                                color: const Color(0xFF5D686C),
-                                fontSize: 16 * scale,
-                                height: 1.48,
-                                fontWeight: FontWeight.w500,
+                            Reveal(
+                              order: 3,
+                              child: Text(
+                                'Registra a tu mascota, recibe alertas de tu zona en La Ceiba y reporta avistamientos en segundos.',
+                                style: TextStyle(
+                                  color: const Color(0xFF5D686C),
+                                  fontSize: 16 * scale,
+                                  height: 1.48,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                             SizedBox(height: 6 * scale),
-                            _button(
-                              context,
-                              'Crear cuenta',
-                              const AccountForm(register: true),
-                              scale,
-                              primary: true,
+                            Reveal(
+                              order: 4,
+                              child: _button(
+                                context,
+                                'Crear cuenta',
+                                const AccountForm(register: true),
+                                scale,
+                                primary: true,
+                              ),
                             ),
                             SizedBox(height: 15 * scale),
-                            _button(
-                              context,
-                              'Ya tengo cuenta',
-                              const AccountForm(),
-                              scale,
+                            Reveal(
+                              order: 5,
+                              child: _button(
+                                context,
+                                'Ya tengo cuenta',
+                                const AccountForm(),
+                                scale,
+                              ),
                             ),
                             SizedBox(height: 12 * scale),
-                            TextButton(
-                              onPressed: () =>
-                                  _open(context, const SightingForm()),
-                              child: Text(
-                                'Encontré una mascota (sin cuenta)',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: petDarkOrange,
-                                  decoration: TextDecoration.underline,
-                                  fontSize: 14 * scale,
-                                  fontWeight: FontWeight.w700,
+                            Reveal(
+                              order: 6,
+                              child: TextButton(
+                                onPressed: () =>
+                                    _open(context, const SightingForm()),
+                                child: Text(
+                                  'Encontré una mascota (sin cuenta)',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: petDarkOrange,
+                                    decoration: TextDecoration.underline,
+                                    fontSize: 14 * scale,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
@@ -178,30 +209,35 @@ class WelcomeScreen extends StatelessWidget {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16 * scale),
     );
-    return DecoratedBox(
-      decoration: ShapeDecoration(
-        shape: shape,
-        shadows: const [
-          BoxShadow(color: Color(0xFFFFD9C4), offset: Offset(4, 4)),
-        ],
-      ),
-      child: OutlinedButton(
-        onPressed: () => _open(context, page),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primary ? petInk : petDarkOrange,
-          backgroundColor: primary ? petOrange : Colors.white,
-          side: BorderSide(
-            color: primary ? const Color(0xFFE27935) : petOrange,
-            width: 2.4 * scale,
-          ),
-          minimumSize: Size(0, 60 * scale),
+    return Pressable(
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
           shape: shape,
-          textStyle: TextStyle(
-            fontSize: 17 * scale,
-            fontWeight: FontWeight.w800,
-          ),
+          shadows: const [
+            BoxShadow(color: Color(0xFFFFD9C4), offset: Offset(4, 4)),
+          ],
         ),
-        child: Text(label),
+        child: OutlinedButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _open(context, page);
+          },
+          style: OutlinedButton.styleFrom(
+            foregroundColor: primary ? petInk : petDarkOrange,
+            backgroundColor: primary ? petOrange : Colors.white,
+            side: BorderSide(
+              color: primary ? const Color(0xFFE27935) : petOrange,
+              width: 2.4 * scale,
+            ),
+            minimumSize: Size(0, 60 * scale),
+            shape: shape,
+            textStyle: TextStyle(
+              fontSize: 17 * scale,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          child: Text(label),
+        ),
       ),
     );
   }
@@ -276,26 +312,38 @@ class _HeroPanel extends StatelessWidget {
                 painter: const _DashedCircle(),
                 child: SizedBox.square(
                   dimension: 154 * scale,
-                  child: Center(child: _paw(73 * scale, petOrange)),
+                  child: Center(
+                    child: Breathing(
+                      scale: 1.08,
+                      child: _paw(73 * scale, petOrange),
+                    ),
+                  ),
                 ),
               ),
             ),
             Positioned(
               left: 18 * scale,
               top: 22 * scale,
-              child: _label(
-                'Alertas por zona',
-                Icons.location_on_outlined,
-                const Color(0xFF00CF9C),
+              child: Float(
+                distance: 6 * scale,
+                child: _label(
+                  'Alertas por zona',
+                  Icons.location_on_outlined,
+                  const Color(0xFF00CF9C),
+                ),
               ),
             ),
             Positioned(
               right: 18 * scale,
               bottom: 20 * scale,
-              child: _label(
-                'Escanea y reporta',
-                Icons.photo_camera_outlined,
-                const Color(0xFFFFD063),
+              child: Float(
+                distance: 6 * scale,
+                period: const Duration(milliseconds: 2700),
+                child: _label(
+                  'Escanea y reporta',
+                  Icons.photo_camera_outlined,
+                  const Color(0xFFFFD063),
+                ),
               ),
             ),
           ],

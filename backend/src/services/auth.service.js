@@ -9,6 +9,8 @@ import {
   solicitarVerificacion,
 } from './seguridadCuenta.service.js';
 import { crearSesionConTokens } from './sesion.service.js';
+import { insertarOrganizacion } from './organizacion.service.js';
+import { guardarUbicacionAlertas } from './alertaUbicacion.service.js';
 
 const HASH_ROUNDS = 12;
 
@@ -38,7 +40,7 @@ function crearToken(usuario) {
   });
 }
 
-function datosPublicos(usuario) {
+export function datosPublicos(usuario) {
   return {
     id_usuario: usuario.id_usuario,
     nombre: usuario.nombre,
@@ -53,6 +55,17 @@ function datosPublicos(usuario) {
 // REGISTRAR CIUDADANO
 // ==========================================
 
+export async function crearCiudadano(datos, transaction) {
+  const rol = await Rol.findOne({ where: { nombre: 'ciudadano' }, transaction });
+  if (!rol) throw new AppError('Configuración de roles incompleta', 500);
+  const usuario = await Usuario.create(datos, { transaction });
+  await UsuarioRol.create({
+    id_usuario: usuario.id_usuario,
+    id_rol: rol.id_rol,
+  }, { transaction });
+  return usuario;
+}
+
 export async function registrarUsuario(datos) {
   const password_hash = await bcrypt.hash(
     datos.password,
@@ -63,19 +76,7 @@ export async function registrarUsuario(datos) {
 
   try {
     usuario = await sequelize.transaction(async (transaction) => {
-      const rolCiudadano = await Rol.findOne({
-        where: { nombre: 'ciudadano' },
-        transaction,
-      });
-
-      if (!rolCiudadano) {
-        throw new AppError(
-          'Configuración de roles incompleta',
-          500
-        );
-      }
-
-      const nuevoUsuario = await Usuario.create({
+      const nuevoUsuario = await crearCiudadano({
         nombre: datos.nombre,
         apellido: datos.apellido,
         correo: datos.correo,
@@ -83,13 +84,14 @@ export async function registrarUsuario(datos) {
         dni: datos.dni ?? null,
         password_hash,
         activo: true,
-      }, { transaction });
+      }, transaction);
 
-      await UsuarioRol.create({
-        id_usuario: nuevoUsuario.id_usuario,
-        id_rol: rolCiudadano.id_rol,
-      }, { transaction });
-
+      if (datos.organizacion) {
+        await insertarOrganizacion(datos.organizacion, nuevoUsuario.id_usuario, transaction);
+      }
+      if (datos.alertas_ubicacion) {
+        await guardarUbicacionAlertas(nuevoUsuario.id_usuario, datos.alertas_ubicacion, transaction);
+      }
       return nuevoUsuario;
     });
   } catch (error) {
@@ -103,10 +105,17 @@ export async function registrarUsuario(datos) {
     throw error;
   }
 
-  await solicitarVerificacion(usuario.correo);
+  let verificacionEnviada = true;
+  try {
+    await solicitarVerificacion(usuario.correo);
+  } catch {
+    verificacionEnviada = false;
+    console.warn('No se pudo enviar el correo de verificación de una cuenta nueva.');
+  }
 
   return {
     usuario: datosPublicos(usuario),
+    verificacion_enviada: verificacionEnviada,
     message: 'Revisá tu correo para activar tu cuenta',
   };
 }

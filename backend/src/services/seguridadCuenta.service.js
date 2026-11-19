@@ -37,7 +37,7 @@ export async function solicitarVerificacion(correo) {
       destinatario: usuario.correo,
       asunto: 'Verificá tu correo de PetID',
       contenido:
-        'Para verificar tu correo, abrí este enlace:\n\n' +
+        'Para verificar tu correo, copia este enlace y pégalo en «Verificar mi correo» en PetID:\n\n' +
         crearEnlace('/verificar-correo', token) +
         '\n\nEl enlace vence en 24 horas.',
     });
@@ -80,7 +80,7 @@ export async function solicitarRecuperacion(correo) {
       destinatario: usuario.correo,
       asunto: 'Recuperación de contraseña de PetID',
       contenido:
-        'Recibimos una solicitud para cambiar tu contraseña.\n\n' +
+        'Para cambiar tu contraseña, copia este enlace y pégalo en «Olvidaste tu contraseña» en PetID.\n\n' +
         crearEnlace('/restablecer-contrasena', token) +
         '\n\nEl enlace vence en 15 minutos.' +
         '\nSi no fuiste vos, ignorá este correo.',

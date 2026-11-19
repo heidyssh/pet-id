@@ -1,1 +1,3 @@
 #include "Generated.xcconfig"
+PETID_GOOGLE_IOS_URL_SCHEME = hn.petid.google-disabled
+#include? "PetIdGoogle.local.xcconfig"

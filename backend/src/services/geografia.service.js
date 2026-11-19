@@ -38,6 +38,15 @@ export async function extraviosCercanos(filtros) {
       m.id_especie,
       m.color_principal,
       m.tamano,
+      e.nombre AS especie,
+      rz.nombre AS raza,
+      (
+        SELECT COALESCE(f.url_recorte, f.url_original)
+        FROM fotos_mascotas f
+        WHERE f.id_mascota = m.id_mascota
+        ORDER BY f.es_principal DESC, f.id_foto ASC
+        LIMIT 1
+      ) AS foto,
       ROUND((ST_Distance(
         r.ubicacion,
         ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326)::geography
@@ -47,6 +56,8 @@ export async function extraviosCercanos(filtros) {
       COUNT(*) OVER() AS total_resultados
     FROM reportes_extravio r
     JOIN mascotas m ON m.id_mascota = r.id_mascota
+    JOIN especies e ON e.id_especie = m.id_especie
+    LEFT JOIN razas rz ON rz.id_raza = m.id_raza
     WHERE r.estado = 'activo'
       AND r.ubicacion IS NOT NULL
       AND (:id_especie::smallint IS NULL OR m.id_especie = :id_especie)

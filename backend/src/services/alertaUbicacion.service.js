@@ -43,15 +43,19 @@ async function enviarCandidatos(candidatos) {
   return enviadas;
 }
 
-export async function actualizarUbicacionAlertas(idUsuario, datos) {
+export async function guardarUbicacionAlertas(idUsuario, datos, transaction) {
   const [suscripcion] = await SuscripcionUbicacion.upsert({
     id_usuario: idUsuario,
     ubicacion: crearPuntoGeografico(datos.ubicacion),
     radio_km: datos.radio_km,
     activa: true,
     fecha_actualizacion: new Date(),
-  }, { returning: true });
+  }, { returning: true, transaction });
+  return suscripcion;
+}
 
+export async function actualizarUbicacionAlertas(idUsuario, datos) {
+  const suscripcion = await guardarUbicacionAlertas(idUsuario, datos);
   const candidatos = await sequelize.query(`
     SELECT
       :id_usuario::bigint AS id_usuario,

@@ -45,6 +45,12 @@ export const Usuario = sequelize.define('Usuario', {
     allowNull: false,
   },
 
+  google_sub: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    unique: true,
+  },
+
   fecha_registro: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -74,11 +80,12 @@ export const Usuario = sequelize.define('Usuario', {
 
   defaultScope: {
     attributes: {
-      exclude: ['password_hash'],
+      exclude: ['password_hash', 'google_sub'],
     },
   },
 
   scopes: {
     withPassword: {},
+    withGoogleIdentity: { attributes: { exclude: ['password_hash'] } },
   },
 });

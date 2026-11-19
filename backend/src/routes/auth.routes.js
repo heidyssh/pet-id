@@ -4,12 +4,14 @@ import { Router } from 'express';
 import {
   registro,
   login,
+  loginGoogle,
   me,
 } from '../controllers/auth.controller.js';
 
 import {
   registroSchema,
   loginSchema,
+  loginGoogleSchema,
 } from '../schemas/auth.schema.js';
 
 import {
@@ -48,6 +50,8 @@ router.post(
   validar(loginSchema),
   login
 );
+
+router.post('/google', loginLimiter, validar(loginGoogleSchema), loginGoogle);
 
 router.get(
   '/me',

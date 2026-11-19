@@ -8,6 +8,17 @@
 	<string>PetID</string>
 	<key>NSCameraUsageDescription</key>
 	<string>PetID usa la cámara para fotografiar una mascota avistada.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PetID usa tu ubicación, con tu permiso, para configurar alertas de mascotas cerca de ti.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(PETID_GOOGLE_IOS_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PetID permite adjuntar una foto de la mascota desde tu galería.</string>
 	<key>NSAppTransportSecurity</key>

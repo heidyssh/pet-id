@@ -17,6 +17,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL es requerida'),
 
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
+  GOOGLE_SIGN_IN_CLIENT_ID: z.string().trim().optional(),
 
   FRONTEND_ORIGIN: z
     .string()

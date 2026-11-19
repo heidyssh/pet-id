@@ -31,9 +31,25 @@ class PetIdApi {
         !(uri.scheme == 'https' || (kDebugMode && uri.scheme == 'http'))) {
       throw const ApiError('Configura la dirección de la API de PetID.');
     }
+    // La ruta puede traer parámetros, como /mascotas/mias?limite=20.
+    final target = Uri.parse(path);
     return uri.replace(
-      path: '${uri.path.replaceFirst(RegExp(r'/+$'), '')}$path',
+      path: '${uri.path.replaceFirst(RegExp(r'/+$'), '')}${target.path}',
+      query: target.hasQuery ? target.query : null,
     );
+  }
+
+  /// Convierte una ruta de imagen del backend en una URL completa.
+  String? imageUrl(Object? value) {
+    if (value is! String || value.isEmpty) return null;
+    if (value.startsWith('https://') || value.startsWith('http://')) {
+      return value;
+    }
+    try {
+      return _uri('').replace(path: value).toString();
+    } on ApiError {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> request(
@@ -45,6 +61,13 @@ class PetIdApi {
     String capture = 'desconocida',
   }) async {
     final uri = _uri(path);
+    if (path == '/auth/google' &&
+        uri.scheme != 'https' &&
+        !(kDebugMode && const {'localhost', '127.0.0.1'}.contains(uri.host))) {
+      throw const ApiError(
+        'El acceso con Google necesita una conexión segura a PetID.',
+      );
+    }
     final http.BaseRequest request;
     if (photo == null) {
       final json = http.Request(method, uri);
@@ -100,6 +123,12 @@ class PetIdApi {
       return decoded;
     }
     final message = decoded is Map ? decoded['message'] : null;
+    final issues = decoded is Map ? decoded['errors'] : null;
+    if (issues is List) {
+      if (issues.firstOrNull case {'mensaje': final String detail}) {
+        throw ApiError(detail, response.statusCode);
+      }
+    }
     throw ApiError(
       message is String ? message : 'No se pudo completar la solicitud.',
       response.statusCode,
@@ -173,14 +202,62 @@ class Session extends ChangeNotifier {
   );
 
   Future<void> login(Map<String, Object?> form) async {
+    await _openSession('/auth/login', form);
+  }
+
+  Future<void> loginWithGoogle(String idToken) async {
+    await _openSession('/auth/google', {'id_token': idToken});
+  }
+
+  Future<void> _openSession(String path, Map<String, Object?> form) async {
     final data =
-        (await api.request('POST', '/auth/login', body: form))['data']
+        (await api.request('POST', path, body: form))['data']
             as Map<String, dynamic>;
     await _save(data);
     _access = data['access_token'] as String;
     user = data['usuario'] as Map<String, dynamic>;
     restoreError = null;
     notifyListeners();
+  }
+
+  /// Consulta privada. Si el token venció, lo renueva una vez y reintenta.
+  Future<Map<String, dynamic>> authRequest(
+    String method,
+    String path, {
+    Map<String, Object?>? body,
+  }) async {
+    try {
+      return await api.request(method, path, body: body, token: _access);
+    } on ApiError catch (error) {
+      if (error.status != 401) rethrow;
+      await _renew();
+      return api.request(method, path, body: body, token: _access);
+    }
+  }
+
+  Future<void> _renew() async {
+    final saved = await _storage.read(key: _key);
+    if (saved == null) throw const ApiError('Tu sesión venció.', 401);
+    final tokens = jsonDecode(saved) as Map<String, dynamic>;
+    try {
+      final renewed =
+          (await api.request(
+                'POST',
+                '/sesiones/renovar',
+                body: {'refresh_token': tokens['refresh_token']},
+              ))['data']
+              as Map<String, dynamic>;
+      await _save(renewed);
+      _access = renewed['access_token'] as String;
+    } on ApiError catch (error) {
+      if (error.status == 401 || error.status == 403) {
+        await _storage.delete(key: _key);
+        _access = null;
+        user = null;
+        notifyListeners();
+      }
+      rethrow;
+    }
   }
 
   Future<void> report(

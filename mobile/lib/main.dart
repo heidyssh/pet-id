@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import 'api.dart';
-import 'entry_forms.dart';
+import 'home.dart';
+import 'motion.dart';
 import 'welcome.dart';
 
 void main() => runApp(const PetIdApp());
@@ -41,6 +42,14 @@ class _PetIdAppState extends State<PetIdApp> {
               onPrimary: Colors.white,
             ),
             scaffoldBackgroundColor: petCream,
+            // Todas las pantallas, actuales y nuevas, entran con la misma
+            // animación.
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: PetPageTransitions(),
+                TargetPlatform.iOS: PetPageTransitions(),
+              },
+            ),
             inputDecorationTheme: const InputDecorationTheme(
               border: OutlineInputBorder(),
               filled: true,
@@ -66,9 +75,10 @@ class _Entry extends StatelessWidget {
     if (session.user case final user?) {
       final givenName = user['nombre']?.toString().trim() ?? '';
       final familyName = user['apellido']?.toString().trim() ?? '';
-      final fullName = [givenName, familyName]
-          .where((part) => part.isNotEmpty)
-          .join(' ');
+      final fullName = [
+        givenName,
+        familyName,
+      ].where((part) => part.isNotEmpty).join(' ');
       return CitizenHome(name: fullName);
     }
     return WelcomeScreen(restoreError: session.restoreError);

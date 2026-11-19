@@ -12,6 +12,7 @@ import {
 } from '../services/seguridadCuenta.service.js';
 
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { iniciarSesionGoogle } from '../services/googleAuth.service.js';
 
 export const registro = asyncHandler(async (req, res) => {
   const resultado = await registrarUsuario(req.body);
@@ -38,6 +39,12 @@ export const login = asyncHandler(async (req, res) => {
     message: 'Inicio de sesión correcto',
     data: resultado,
   });
+});
+
+export const loginGoogle = asyncHandler(async (req, res) => {
+  const data = await iniciarSesionGoogle(req.body.id_token, req.get('user-agent') ?? '');
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).json({ success: true, data });
 });
 
 export const me = asyncHandler(async (req, res) => {

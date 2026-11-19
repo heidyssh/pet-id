@@ -30,9 +30,15 @@ fechas clínicas son `YYYY-MM-DD`.
 
 ## Autenticación y sesiones
 
-- `POST /auth/registro` — crea un ciudadano.
+- `POST /auth/registro` - crea un ciudadano. Requiere `telefono` hondureño
+  de 8 dígitos que empiece con 2, 3, 8 o 9. Admite el prefijo `+504`.
+  Admite `organizacion: { nombre, tipo, telefono? }` para una veterinaria o refugio
+  pendiente de revisión y `alertas_ubicacion: { ubicacion, radio_km? }`
+  si se otorgó permiso para alertas por zona.
 - `POST /auth/login` — devuelve `usuario`, `access_token`, `refresh_token`,
   `token_type` y `expires_in`.
+- `POST /auth/google` - recibe `id_token` y abre una sesión PetID después
+  de verificar el token. Requiere `GOOGLE_SIGN_IN_CLIENT_ID`.
 - `GET /auth/me` — perfil y roles.
 - `POST /auth/reenviar-verificacion`, `/auth/verificar-correo`,
   `/auth/recuperar-contrasena`, `/auth/restablecer-contrasena`.
