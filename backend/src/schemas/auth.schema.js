@@ -11,6 +11,9 @@ const correoSchema = z.email()
 const passwordSchema = z.string()
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
   .refine((valor) => valor.trim().length > 0, 'La contraseña es obligatoria')
+  .regex(/[A-Z]/, 'La contraseña debe incluir una letra mayúscula')
+  .regex(/[a-z]/, 'La contraseña debe incluir una letra minúscula')
+  .regex(/[0-9]/, 'La contraseña debe incluir un número')
   .refine(
     (valor) => Buffer.byteLength(valor, 'utf8') <= 72,
     'La contraseña es demasiado larga'

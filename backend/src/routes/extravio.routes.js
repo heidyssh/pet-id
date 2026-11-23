@@ -16,12 +16,13 @@ import {
   crearExtravioSchema,
 } from '../schemas/extravio.schema.js';
 import { buscarExtraviosCercanos } from '../controllers/geografia.controller.js';
+import { limitarConsultasGeograficas } from '../middlewares/geographyLimiter.middleware.js';
 
 const router = Router();
 
 // Consultar reportes activos
 router.get('/', obtenerExtravios);
-router.get('/cercanos', buscarExtraviosCercanos);
+router.get('/cercanos', limitarConsultasGeograficas, buscarExtraviosCercanos);
 
 // Consultar reportes propios
 router.get(

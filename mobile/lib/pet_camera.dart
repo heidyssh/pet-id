@@ -19,7 +19,9 @@ class PetCaptureResult {
 }
 
 class PetCameraPage extends StatefulWidget {
-  const PetCameraPage({super.key});
+  const PetCameraPage({super.key, this.attachLocation = false});
+
+  final bool attachLocation;
 
   @override
   State<PetCameraPage> createState() => _PetCameraPageState();
@@ -32,6 +34,7 @@ class _PetCameraPageState extends State<PetCameraPage>
   String? _cameraError;
   bool _takingPhoto = false;
   bool _locating = false;
+  bool _autoLocationRequested = false;
   double? _latitude;
   double? _longitude;
 
@@ -76,6 +79,10 @@ class _PetCameraPageState extends State<PetCameraPage>
         _controller = controller;
         _cameraError = null;
       });
+      if (widget.attachLocation && !_autoLocationRequested) {
+        _autoLocationRequested = true;
+        unawaited(_requestLocation());
+      }
     } on CameraException {
       if (mounted) {
         setState(() => _cameraError = 'No pudimos abrir la cámara de PetID.');
@@ -244,18 +251,28 @@ class _PetCameraPageState extends State<PetCameraPage>
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: const Color(0xFF55D6C3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.center_focus_strong_rounded,
+                          widget.attachLocation
+                              ? _hasLocation
+                                    ? Icons.location_on_rounded
+                                    : Icons.location_searching_rounded
+                              : Icons.center_focus_strong_rounded,
                           color: Colors.white,
                           size: 16,
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         Text(
-                          'Encuadre asistido',
-                          style: TextStyle(
+                          widget.attachLocation
+                              ? _locating
+                                    ? 'Buscando GPS...'
+                                    : _hasLocation
+                                    ? 'GPS listo'
+                                    : 'Agregar GPS'
+                              : 'Encuadre asistido',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,

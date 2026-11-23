@@ -9,6 +9,9 @@ import 'account_layout.dart';
 import 'api.dart';
 import 'entry_forms.dart';
 import 'motion.dart';
+import 'nearby_map.dart';
+import 'pet_detail.dart';
+import 'pet_registration.dart';
 import 'welcome.dart';
 
 const _pink = Color(0xFFFF6B98);
@@ -131,9 +134,29 @@ class _CitizenHomeState extends State<CitizenHome> {
       );
   }
 
-  void _openSighting() => Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (_) => const SightingForm(signedIn: true)),
-  );
+  Future<void> _openSighting() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            const SightingForm(signedIn: true, startWithCamera: true),
+      ),
+    );
+    if (created == true && mounted) unawaited(_refresh());
+  }
+
+  Future<void> _openPet(Map<String, dynamic> pet) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => PetDetailPage(initialPet: pet)),
+    );
+    if (mounted) unawaited(_loadPets());
+  }
+
+  Future<void> _openPetRegistration() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const PetRegistrationPage()),
+    );
+    if (created == true && mounted) unawaited(_loadPets());
+  }
 
   Future<void> _openNotifications() async {
     await showModalBottomSheet<void>(
@@ -152,11 +175,7 @@ class _CitizenHomeState extends State<CitizenHome> {
   Widget build(BuildContext context) {
     final pages = [
       _homePage(),
-      _PlaceholderPage(
-        icon: Icons.location_on_outlined,
-        title: 'Mapa',
-        text: 'Aquí verás los reportes cercanos en el mapa.',
-      ),
+      const NearbyMapPage(),
       _petsPage(),
       _ProfilePage(name: widget.name),
     ];
@@ -224,7 +243,7 @@ class _CitizenHomeState extends State<CitizenHome> {
                   color: _mint,
                   icon: Icons.add_rounded,
                   label: 'Registrar mascota',
-                  onTap: () => _soon('El registro de mascotas'),
+                  onTap: _openPetRegistration,
                 ),
               ),
             ],
@@ -328,7 +347,7 @@ class _CitizenHomeState extends State<CitizenHome> {
       return _MessageCard(
         text: 'Todavía no registras mascotas.',
         action: 'Registrar',
-        onAction: () => _soon('El registro de mascotas'),
+        onAction: _openPetRegistration,
       );
     }
     return Row(
@@ -340,7 +359,11 @@ class _CitizenHomeState extends State<CitizenHome> {
             child: i < _pets.length
                 ? Reveal(
                     order: i,
-                    child: _PetCard(pet: _pets[i], index: i),
+                    child: _PetCard(
+                      pet: _pets[i],
+                      index: i,
+                      onTap: () => _openPet(_pets[i]),
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
@@ -413,7 +436,11 @@ class _CitizenHomeState extends State<CitizenHome> {
               for (var i = 0; i < _pets.length; i++)
                 Reveal(
                   order: i,
-                  child: _PetCard(pet: _pets[i], index: i),
+                  child: _PetCard(
+                    pet: _pets[i],
+                    index: i,
+                    onTap: () => _openPet(_pets[i]),
+                  ),
                 ),
             ],
           ),
@@ -742,9 +769,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _PetCard extends StatelessWidget {
-  const _PetCard({required this.pet, required this.index});
+  const _PetCard({required this.pet, required this.index, required this.onTap});
   final Map<String, dynamic> pet;
   final int index;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -752,48 +780,60 @@ class _PetCard extends StatelessWidget {
         ? (_peach, petOrange)
         : (_lilac, _purple);
     final photo = context.read<PetIdApi>().imageUrl(_photoOf(pet));
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              width: 56,
-              height: 56,
-              color: background,
-              child: photo == null
-                  ? Icon(Icons.pets_rounded, color: foreground, size: 28)
-                  : Image.network(
-                      photo,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          Icon(Icons.pets_rounded, color: foreground, size: 28),
-                    ),
+    return Pressable(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: _cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    color: background,
+                    child: photo == null
+                        ? Icon(Icons.pets_rounded, color: foreground, size: 28)
+                        : Image.network(
+                            photo,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(
+                              Icons.pets_rounded,
+                              color: foreground,
+                              size: 28,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${pet['nombre'] ?? ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: petInk,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _speciesLabel(pet),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: accountMuted, fontSize: 13),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            '${pet['nombre'] ?? ''}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: petInk,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _speciesLabel(pet),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: accountMuted, fontSize: 13),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1106,53 +1146,6 @@ class _BottomBar extends StatelessWidget {
   );
 }
 
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({
-    required this.icon,
-    required this.title,
-    required this.text,
-  });
-  final IconData icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: _peach,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Icon(icon, color: petOrange, size: 40),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            title,
-            style: const TextStyle(
-              color: petInk,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: accountMuted, fontSize: 15),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 class _ProfilePage extends StatefulWidget {
   const _ProfilePage({required this.name});
   final String name;
@@ -1238,6 +1231,7 @@ class _ProfilePageState extends State<_ProfilePage> {
         const SizedBox(height: 20),
         AccountButton(
           _loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión',
+          loading: _loggingOut,
           onPressed: _loggingOut ? null : _logout,
         ),
       ],

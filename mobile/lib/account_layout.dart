@@ -183,11 +183,13 @@ class AccountButton extends StatelessWidget {
     super.key,
     this.onPressed,
     this.primary = true,
+    this.loading = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool primary;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +225,24 @@ class AccountButton extends StatelessWidget {
         // El texto cambia con un fundido, por ejemplo al pasar a "Enviando...".
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 220),
-          child: Text(label, key: ValueKey(label), textAlign: TextAlign.center),
+          child: Row(
+            key: ValueKey((label, loading)),
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (loading) ...[
+                SizedBox.square(
+                  dimension: 17,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: primary ? petInk : petDarkOrange,
+                  ),
+                ),
+                const SizedBox(width: 9),
+              ],
+              Flexible(child: Text(label, textAlign: TextAlign.center)),
+            ],
+          ),
         ),
       ),
     );

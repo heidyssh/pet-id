@@ -29,6 +29,7 @@ export async function extraviosCercanos(filtros) {
   const rows = await sequelize.query(`
     SELECT
       r.id_reporte,
+      'perdido' AS tipo_alerta,
       r.fecha_perdida,
       r.fecha_reporte,
       r.referencia_lugar,
@@ -80,14 +81,24 @@ export async function avistamientosCercanos(filtros) {
   const rows = await sequelize.query(`
     SELECT
       a.id_avistamiento,
+      'avistado' AS tipo_alerta,
       a.id_especie,
       a.fecha_avistamiento,
       a.fecha_registro,
+      a.fecha_registro AS fecha_reporte,
       a.referencia_lugar,
       a.color_principal,
       a.tamano,
       a.senas_particulares,
       a.descripcion,
+      e.nombre AS especie,
+      (
+        SELECT COALESCE(f.url_recorte, f.url_original)
+        FROM fotos_avistamientos f
+        WHERE f.id_avistamiento = a.id_avistamiento
+        ORDER BY f.id_foto ASC
+        LIMIT 1
+      ) AS foto,
       ROUND((ST_Distance(
         a.ubicacion,
         ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326)::geography
@@ -96,6 +107,7 @@ export async function avistamientosCercanos(filtros) {
       ROUND(ST_X(a.ubicacion::geometry)::numeric, 3) AS longitud_aproximada,
       COUNT(*) OVER() AS total_resultados
     FROM avistamientos a
+    LEFT JOIN especies e ON e.id_especie = a.id_especie
     WHERE a.estado IN ('registrado', 'revisado')
       AND a.ubicacion IS NOT NULL
       AND (:id_especie::smallint IS NULL OR a.id_especie = :id_especie)

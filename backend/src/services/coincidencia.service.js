@@ -409,7 +409,7 @@ export async function listarCoincidenciasReporte(idReporte, idUsuario) {
   });
   if (!reporte) throw new AppError('Reporte no encontrado', 404);
 
-  return Coincidencia.findAll({
+  const coincidencias = await Coincidencia.findAll({
     where: { id_reporte: idReporte },
     attributes: [
       'id_coincidencia', 'metodo', 'puntuacion',
@@ -422,7 +422,7 @@ export async function listarCoincidenciasReporte(idReporte, idUsuario) {
       attributes: [
         'id_avistamiento', 'id_especie', 'fecha_avistamiento',
         'referencia_lugar', 'color_principal', 'tamano',
-        'senas_particulares', 'descripcion',
+        'senas_particulares', 'descripcion', 'ubicacion',
       ],
       include: [
         { model: Especie, as: 'especie', attributes: ['nombre'], required: false },
@@ -430,6 +430,21 @@ export async function listarCoincidenciasReporte(idReporte, idUsuario) {
       ],
     }],
     order: [['puntuacion', 'DESC'], ['fecha_deteccion', 'DESC']],
+  });
+
+  // Este endpoint ya verificó que el reporte pertenece al dueño. Solo aquí se
+  // entrega el punto exacto; los listados públicos conservan coordenadas
+  // redondeadas para proteger a quien realizó el avistamiento.
+  return coincidencias.map((coincidencia) => {
+    const item = coincidencia.toJSON();
+    const coordenadas = item.avistamiento?.ubicacion?.coordinates;
+    if (Array.isArray(coordenadas) && coordenadas.length === 2) {
+      item.avistamiento.ubicacion = {
+        latitud: coordenadas[1],
+        longitud: coordenadas[0],
+      };
+    }
+    return item;
   });
 }
 

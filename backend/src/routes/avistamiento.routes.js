@@ -21,6 +21,7 @@ import { validar } from '../middlewares/validate.middleware.js';
 import { subirFoto } from '../middlewares/upload.middleware.js';
 import { subirFotoAvistamiento } from '../controllers/foto.controller.js';
 import { buscarAvistamientosCercanos } from '../controllers/geografia.controller.js';
+import { limitarConsultasGeograficas } from '../middlewares/geographyLimiter.middleware.js';
 
 const router = Router();
 
@@ -37,7 +38,7 @@ const limiteAvistamientos = rateLimit({
 
 // Consultas públicas
 router.get('/', obtenerAvistamientos);
-router.get('/cercanos', buscarAvistamientosCercanos);
+router.get('/cercanos', limitarConsultasGeograficas, buscarAvistamientosCercanos);
 
 // Reportes del usuario autenticado
 router.get(

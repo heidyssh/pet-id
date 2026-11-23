@@ -70,7 +70,7 @@ class _Entry extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = context.watch<Session>();
     if (session.loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const _PetIdBootLoader();
     }
     if (session.user case final user?) {
       final givenName = user['nombre']?.toString().trim() ?? '';
@@ -83,4 +83,64 @@ class _Entry extends StatelessWidget {
     }
     return WelcomeScreen(restoreError: session.restoreError);
   }
+}
+
+class _PetIdBootLoader extends StatelessWidget {
+  const _PetIdBootLoader();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Breathing(
+              scale: 1.08,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFFFFDCC5),
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox.square(
+                  dimension: 82,
+                  child: Icon(
+                    Icons.pets_rounded,
+                    color: petDarkOrange,
+                    size: 38,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'PetID',
+              style: TextStyle(
+                color: petInk,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Preparando todo para ti',
+              style: TextStyle(color: Color(0xFF5D686C), fontSize: 14),
+            ),
+            const SizedBox(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: const SizedBox(
+                width: 150,
+                child: LinearProgressIndicator(
+                  minHeight: 5,
+                  color: petOrange,
+                  backgroundColor: Color(0xFFFDE1D1),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

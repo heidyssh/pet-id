@@ -42,10 +42,127 @@ String? _validateEmail(String? value) {
 String? _validateNewPassword(String? value) {
   if (value == null || value.trim().isEmpty) return 'Escribe tu contraseña.';
   if (value.length < 8) return 'Escribe al menos 8 caracteres.';
+  if (!RegExp(r'[A-Z]').hasMatch(value) ||
+      !RegExp(r'[a-z]').hasMatch(value) ||
+      !RegExp(r'[0-9]').hasMatch(value)) {
+    return 'Cumple todos los requisitos de la contraseña.';
+  }
   if (utf8.encode(value).length > 72) {
     return 'La contraseña es demasiado larga.';
   }
   return null;
+}
+
+class _PasswordRequirements extends StatelessWidget {
+  const _PasswordRequirements({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, value, _) {
+          final password = value.text;
+          final started = password.isNotEmpty;
+          final requirements = <(String, bool)>[
+            ('8 caracteres', password.length >= 8),
+            ('Una mayúscula', RegExp(r'[A-Z]').hasMatch(password)),
+            ('Una minúscula', RegExp(r'[a-z]').hasMatch(password)),
+            ('Un número', RegExp(r'[0-9]').hasMatch(password)),
+          ];
+          return Semantics(
+            liveRegion: true,
+            label: 'Requisitos de contraseña',
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Wrap(
+                spacing: 7,
+                runSpacing: 7,
+                children: [
+                  for (final requirement in requirements)
+                    _PasswordRequirementChip(
+                      label: requirement.$1,
+                      valid: requirement.$2,
+                      started: started,
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+}
+
+class _PasswordRequirementChip extends StatelessWidget {
+  const _PasswordRequirementChip({
+    required this.label,
+    required this.valid,
+    required this.started,
+  });
+
+  final String label;
+  final bool valid;
+  final bool started;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = !started
+        ? accountMuted
+        : valid
+        ? const Color(0xFF176D61)
+        : const Color(0xFFB42318);
+    final background = !started
+        ? const Color(0xFFF5F2EF)
+        : valid
+        ? const Color(0xFFDDF5EE)
+        : const Color(0xFFFFE8E5);
+    final border = !started
+        ? accountBorder
+        : valid
+        ? const Color(0xFF8BD8C5)
+        : const Color(0xFFFFB4AB);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: Icon(
+              !started
+                  ? Icons.circle_outlined
+                  : valid
+                  ? Icons.check_circle_rounded
+                  : Icons.cancel_rounded,
+              key: ValueKey((started, valid)),
+              color: foreground,
+              size: 15,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 abstract class _FormState<T extends StatefulWidget> extends State<T> {
@@ -563,6 +680,11 @@ class _AccountFormState extends _FormState<AccountForm> {
                     onFieldSubmitted: (_) => _submitValidated(),
                   ),
                 ),
+                if (register)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 0, bottom: 14),
+                    child: _PasswordRequirements(controller: _password),
+                  ),
               ],
             ),
           ),
@@ -597,6 +719,7 @@ class _AccountFormState extends _FormState<AccountForm> {
         const SizedBox(height: 12),
         AccountButton(
           busy ? 'Un momento…' : submitLabel,
+          loading: busy,
           onPressed: busy ? null : _submitValidated,
         ),
       ],
@@ -748,6 +871,11 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                   validator: _validateNewPassword,
                 ),
               ),
+            if (_usingLink)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _PasswordRequirements(controller: _password),
+              ),
           ],
         ),
       ),
@@ -758,6 +886,7 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
             : _usingLink
             ? 'Guardar contraseña'
             : 'Enviar enlace',
+        loading: busy,
         onPressed: busy
             ? null
             : () {
@@ -781,8 +910,13 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
 }
 
 class SightingForm extends StatefulWidget {
-  const SightingForm({super.key, this.signedIn = false});
+  const SightingForm({
+    super.key,
+    this.signedIn = false,
+    this.startWithCamera = false,
+  });
   final bool signedIn;
+  final bool startWithCamera;
 
   @override
   State<SightingForm> createState() => _SightingFormState();
@@ -800,6 +934,11 @@ class _SightingFormState extends _FormState<SightingForm> {
   @override
   void initState() {
     super.initState();
+    if (widget.startWithCamera) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _takePhoto();
+      });
+    }
     if (defaultTargetPlatform == TargetPlatform.android) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -842,7 +981,7 @@ class _SightingFormState extends _FormState<SightingForm> {
     if (busy) return;
     final capture = await Navigator.of(context).push<PetCaptureResult>(
       MaterialPageRoute<PetCaptureResult>(
-        builder: (_) => const PetCameraPage(),
+        builder: (_) => const PetCameraPage(attachLocation: true),
       ),
     );
     if (mounted && capture != null) {
@@ -864,10 +1003,11 @@ class _SightingFormState extends _FormState<SightingForm> {
         'ubicacion': {'latitud': _latitude, 'longitud': _longitude},
     };
     final photo = _photo;
+    final Map<String, dynamic> response;
     if (widget.signedIn) {
-      await context.read<Session>().report(data, photo, _capture);
+      response = await context.read<Session>().report(data, photo, _capture);
     } else {
-      await context.read<PetIdApi>().request(
+      response = await context.read<PetIdApi>().request(
         'POST',
         photo == null ? '/avistamientos' : '/avistamientos/escanear',
         body: data,
@@ -876,12 +1016,27 @@ class _SightingFormState extends _FormState<SightingForm> {
       );
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Avistamiento registrado. Gracias por reportarlo.'),
-      ),
-    );
-    Navigator.of(context).pop();
+    if (photo != null) {
+      final result = response['data'] is Map
+          ? (response['data'] as Map)['resultado']
+          : null;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: petCream,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        builder: (_) => _ScanResultSheet(result: result),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Avistamiento registrado. Gracias por reportarlo.'),
+        ),
+      );
+    }
+    if (mounted) Navigator.of(context).pop(true);
   });
 
   void _submitValidated() {
@@ -995,6 +1150,7 @@ class _SightingFormState extends _FormState<SightingForm> {
             const SizedBox(height: 22),
             AccountButton(
               busy ? 'Enviando reporte...' : 'Enviar reporte',
+              loading: busy,
               onPressed: busy ? null : _submitValidated,
             ),
           ],
@@ -1002,6 +1158,249 @@ class _SightingFormState extends _FormState<SightingForm> {
       ),
     ],
   );
+}
+
+class _ScanResultSheet extends StatelessWidget {
+  const _ScanResultSheet({required this.result});
+
+  final Object? result;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = result is Map
+        ? Map<String, dynamic>.from(result! as Map)
+        : const <String, dynamic>{};
+    final matches = data['coincidencias'] is List
+        ? (data['coincidencias'] as List)
+              .whereType<Map>()
+              .map(Map<String, dynamic>.from)
+              .toList()
+        : const <Map<String, dynamic>>[];
+    final completed = data['procesamiento'] == 'visual_completado';
+
+    return SafeArea(
+      top: false,
+      child: FractionallySizedBox(
+        heightFactor: matches.isEmpty ? .58 : .82,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: completed
+                          ? const Color(0xFFDDF5EE)
+                          : const Color(0xFFFFE8D8),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Icon(
+                      completed
+                          ? Icons.center_focus_strong_rounded
+                          : Icons.info_outline_rounded,
+                      color: completed
+                          ? const Color(0xFF176D61)
+                          : petDarkOrange,
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          completed ? 'Escaneo completado' : 'Reporte guardado',
+                          style: const TextStyle(
+                            color: petInk,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          completed
+                              ? matches.isEmpty
+                                    ? 'No encontramos una coincidencia visual por ahora.'
+                                    : 'Estas son las mascotas visualmente más parecidas.'
+                              : 'El reconocimiento visual no pudo completarse en este intento.',
+                          style: const TextStyle(
+                            color: accountMuted,
+                            fontSize: 13,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (matches.isNotEmpty)
+                Expanded(
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: matches.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) => Reveal(
+                      order: index,
+                      child: _VisualMatchCard(match: matches[index]),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: accountBorder, width: 2),
+                      ),
+                      child: Text(
+                        completed
+                            ? 'La foto sí fue analizada. Puedes continuar con el reporte; si aparece una coincidencia después, el propietario deberá confirmarla.'
+                            : 'Comprueba que Roboflow esté configurado y que la foto muestre claramente el rostro o cuerpo de un perro o gato.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: accountMuted,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1E8),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.verified_user_outlined, color: petDarkOrange),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'La similitud orienta la búsqueda; nunca confirma por sí sola la identidad. El propietario debe verificarla.',
+                        style: TextStyle(
+                          color: accountMuted,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              AccountButton(
+                'Finalizar reporte',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VisualMatchCard extends StatelessWidget {
+  const _VisualMatchCard({required this.match});
+
+  final Map<String, dynamic> match;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = context.read<PetIdApi>().imageUrl(match['foto']);
+    final score = (match['puntuacion_visual'] as num?)?.toDouble();
+    final percentage = score == null ? null : (score * 100).round();
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: accountBorder, width: 2),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox.square(
+              dimension: 64,
+              child: photo == null
+                  ? const ColoredBox(
+                      color: Color(0xFFFFE8D8),
+                      child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                    )
+                  : Image.network(
+                      photo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(
+                        color: Color(0xFFFFE8D8),
+                        child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${match['nombre'] ?? 'Mascota sin nombre'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: petInk,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Posible coincidencia',
+                  style: TextStyle(color: accountMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (percentage != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDDF5EE),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                '$percentage%',
+                style: const TextStyle(
+                  color: Color(0xFF176D61),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MediaActionButton extends StatelessWidget {

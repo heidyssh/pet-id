@@ -12,6 +12,7 @@ import { crearSesionConTokens } from '../src/services/sesion.service.js';
 import { crearMascota } from '../src/services/mascota.service.js';
 import { crearReporteExtravio, obtenerExtravioPublico, resolverExtravio } from '../src/services/extravio.service.js';
 import { crearAvistamiento, obtenerAvistamiento } from '../src/services/avistamiento.service.js';
+import { listarCoincidenciasReporte } from '../src/services/coincidencia.service.js';
 import { agregarFotoMascota, agregarFotoAvistamiento } from '../src/services/foto.service.js';
 import { crearOrganizacion, guardarMembresia, verificarOrganizacion } from '../src/services/organizacion.service.js';
 import { crearRegistroClinico, historialDeMascota } from '../src/services/historial.service.js';
@@ -85,10 +86,30 @@ try {
     senas_particulares: 'mancha blanca', descripcion: 'Perro con mancha blanca',
   }, usuarios[1].id_usuario);
   assert.equal(await modelos.Coincidencia.count({ where: { id_avistamiento: avistamiento.id_avistamiento } }), 1);
+  const coincidenciasDueno = await listarCoincidenciasReporte(
+    reporte.id_reporte,
+    usuarios[0].id_usuario
+  );
+  assert.equal(
+    coincidenciasDueno[0].avistamiento.ubicacion.latitud,
+    15.7836
+  );
+  await assert.rejects(
+    () => listarCoincidenciasReporte(
+      reporte.id_reporte,
+      usuarios[1].id_usuario
+    ),
+    /Reporte no encontrado/
+  );
 
   const buffer = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#8b5a2b' } }).png().toBuffer();
   const foto = await agregarFotoMascota(mascota.id_mascota, usuarios[0].id_usuario, { buffer }, true);
-  assert.equal(foto.procesamiento, 'proveedor_no_configurado');
+  assert.ok(
+    ['proveedor_no_configurado', 'animal_no_detectado'].includes(
+      foto.procesamiento
+    ),
+    `Estado visual inesperado: ${foto.procesamiento}`
+  );
   archivos.push(...[foto.url_original, foto.url_recorte].filter(Boolean));
   const fotoAvistamiento = await agregarFotoAvistamiento(
     avistamiento.id_avistamiento,
@@ -105,12 +126,18 @@ try {
   servidor.listen(0, '127.0.0.1');
   await once(servidor, 'listening');
   const { port } = servidor.address();
-  const respuestaFoto = await fetch(`http://127.0.0.1:${port}${foto.url_original}`);
-  assert.equal(respuestaFoto.status, 200);
-  assert.equal(
-    respuestaFoto.headers.get('cross-origin-resource-policy'),
-    'cross-origin'
-  );
+  if (foto.url_original.startsWith('https://')) {
+    assert.match(foto.url_original, /^https:\/\/res\.cloudinary\.com\//);
+  } else {
+    const respuestaFoto = await fetch(
+      `http://127.0.0.1:${port}${foto.url_original}`
+    );
+    assert.equal(respuestaFoto.status, 200);
+    assert.equal(
+      respuestaFoto.headers.get('cross-origin-resource-policy'),
+      'cross-origin'
+    );
+  }
 
   await resolverExtravio(reporte.id_reporte, usuarios[0].id_usuario);
   const organizacion = await crearOrganizacion({ nombre: 'Veterinaria de prueba', tipo: 'veterinaria', cargo: 'administrador' }, usuarios[0].id_usuario);

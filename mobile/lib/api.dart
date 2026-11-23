@@ -59,6 +59,7 @@ class PetIdApi {
     String? token,
     XFile? photo,
     String capture = 'desconocida',
+    Map<String, String>? multipartFields,
   }) async {
     final uri = _uri(path);
     final http.BaseRequest request;
@@ -84,6 +85,7 @@ class PetIdApi {
       request = http.MultipartRequest(method, uri)
         ..fields['datos'] = jsonEncode(body)
         ..fields['tipo_captura'] = capture
+        ..fields.addAll(multipartFields ?? const {})
         ..files.add(
           http.MultipartFile(
             'foto',
@@ -249,13 +251,13 @@ class Session extends ChangeNotifier {
     }
   }
 
-  Future<void> report(
+  Future<Map<String, dynamic>> report(
     Map<String, Object?> data,
     XFile? photo,
     String capture,
   ) async {
-    Future<void> send() async {
-      await api.request(
+    Future<Map<String, dynamic>> send() async {
+      return api.request(
         'POST',
         photo == null
             ? '/avistamientos/registrado'
@@ -268,12 +270,33 @@ class Session extends ChangeNotifier {
     }
 
     try {
-      await send();
+      return await send();
     } on ApiError catch (error) {
       if (error.status != 401) rethrow;
       await restore();
       if (user == null || _access == null || restoreError != null) rethrow;
-      await send();
+      return send();
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadPetPhoto(
+    Object petId,
+    XFile photo, {
+    required bool main,
+  }) async {
+    Future<Map<String, dynamic>> send() => api.request(
+      'POST',
+      '/mascotas/$petId/fotos',
+      token: _access,
+      photo: photo,
+      multipartFields: {'es_principal': '$main'},
+    );
+    try {
+      return await send();
+    } on ApiError catch (error) {
+      if (error.status != 401) rethrow;
+      await _renew();
+      return send();
     }
   }
 
