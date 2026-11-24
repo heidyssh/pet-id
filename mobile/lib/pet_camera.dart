@@ -257,8 +257,8 @@ class _PetCameraPageState extends State<PetCameraPage>
                         Icon(
                           widget.attachLocation
                               ? _hasLocation
-                                    ? Icons.location_on_rounded
-                                    : Icons.location_searching_rounded
+                                  ? Icons.location_on_rounded
+                                  : Icons.location_searching_rounded
                               : Icons.center_focus_strong_rounded,
                           color: Colors.white,
                           size: 16,
@@ -267,10 +267,10 @@ class _PetCameraPageState extends State<PetCameraPage>
                         Text(
                           widget.attachLocation
                               ? _locating
-                                    ? 'Buscando GPS...'
-                                    : _hasLocation
-                                    ? 'GPS listo'
-                                    : 'Agregar GPS'
+                                  ? 'Buscando GPS...'
+                                  : _hasLocation
+                                  ? 'GPS listo'
+                                  : 'Agregar GPS'
                               : 'Encuadre asistido',
                           style: const TextStyle(
                             color: Colors.white,
@@ -321,10 +321,11 @@ class _PetCameraPageState extends State<PetCameraPage>
                 tween: Tween(begin: 0, end: 1),
                 duration: const Duration(milliseconds: 480),
                 curve: Curves.easeOutCubic,
-                builder: (context, value, child) => Transform.translate(
-                  offset: Offset(0, 36 * (1 - value)),
-                  child: Opacity(opacity: value, child: child),
-                ),
+                builder:
+                    (context, value, child) => Transform.translate(
+                      offset: Offset(0, 36 * (1 - value)),
+                      child: Opacity(opacity: value, child: child),
+                    ),
                 child: _CameraDock(
                   ready: ready,
                   takingPhoto: _takingPhoto,
@@ -416,9 +417,8 @@ class _CameraDock extends StatelessWidget {
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
-                      color: takingPhoto
-                          ? accountBorder
-                          : const Color(0xFFFFC45B),
+                      color:
+                          takingPhoto ? accountBorder : const Color(0xFFFFC45B),
                       shape: BoxShape.circle,
                       border: Border.all(color: petOrange, width: 3),
                       boxShadow: const [
@@ -443,12 +443,14 @@ class _CameraDock extends StatelessWidget {
               ),
             ),
             _RoundCameraButton(
-              tooltip: hasLocation
-                  ? 'Ubicación agregada'
-                  : 'Agregar ubicación al reporte',
-              icon: hasLocation
-                  ? Icons.location_on_rounded
-                  : Icons.location_on_outlined,
+              tooltip:
+                  hasLocation
+                      ? 'Ubicación agregada'
+                      : 'Agregar ubicación al reporte',
+              icon:
+                  hasLocation
+                      ? Icons.location_on_rounded
+                      : Icons.location_on_outlined,
               light: true,
               active: hasLocation,
               loading: locating,
@@ -462,8 +464,6 @@ class _CameraDock extends StatelessWidget {
           child: Text(
             locating
                 ? 'Obteniendo tu ubicación...'
-                : hasLocation
-                ? 'Ubicación agregada · Toca la huella para capturar'
                 : ready
                 ? 'Toca la huella para capturar'
                 : 'Preparando cámara...',
@@ -503,44 +503,50 @@ class _RoundCameraButton extends StatelessWidget {
     onPressed: onPressed,
     style: IconButton.styleFrom(
       fixedSize: const Size.square(48),
-      foregroundColor: active
-          ? const Color(0xFF176D61)
-          : light
-          ? petInk
-          : Colors.white,
-      disabledForegroundColor: active
-          ? const Color(0xFF176D61)
-          : light
-          ? petInk
-          : Colors.white,
-      backgroundColor: active
-          ? const Color(0xFFDDF5EE)
-          : light
-          ? Colors.white
-          : const Color(0xAA263033),
-      disabledBackgroundColor: active
-          ? const Color(0xFFDDF5EE)
-          : light
-          ? Colors.white
-          : const Color(0xAA263033),
+      foregroundColor:
+          active
+              ? const Color(0xFF176D61)
+              : light
+              ? petInk
+              : Colors.white,
+      disabledForegroundColor:
+          active
+              ? const Color(0xFF176D61)
+              : light
+              ? petInk
+              : Colors.white,
+      backgroundColor:
+          active
+              ? const Color(0xFFDDF5EE)
+              : light
+              ? Colors.white
+              : const Color(0xAA263033),
+      disabledBackgroundColor:
+          active
+              ? const Color(0xFFDDF5EE)
+              : light
+              ? Colors.white
+              : const Color(0xAA263033),
       side: BorderSide(
-        color: active
-            ? const Color(0xFF55D6C3)
-            : light
-            ? accountBorder
-            : Colors.white24,
+        color:
+            active
+                ? const Color(0xFF55D6C3)
+                : light
+                ? accountBorder
+                : Colors.white24,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
     ),
-    icon: loading
-        ? const SizedBox.square(
-            dimension: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.3,
-              color: Color(0xFF176D61),
-            ),
-          )
-        : Icon(icon),
+    icon:
+        loading
+            ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.3,
+                color: Color(0xFF176D61),
+              ),
+            )
+            : Icon(icon),
   );
 }
 
@@ -605,8 +611,9 @@ class _AnimatedScanFrameState extends State<_AnimatedScanFrame>
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _controller,
-    builder: (context, _) =>
-        CustomPaint(painter: _ScanFramePainter(_controller.value)),
+    builder:
+        (context, _) =>
+            CustomPaint(painter: _ScanFramePainter(_controller.value)),
   );
 }
 
@@ -617,11 +624,12 @@ class _ScanFramePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cornerPaint = Paint()
-      ..color = const Color(0xFFFFD35A)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
+    final cornerPaint =
+        Paint()
+          ..color = const Color(0xFFFFD35A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round;
     const length = 34.0;
 
     final corners = [
@@ -647,11 +655,12 @@ class _ScanFramePainter extends CustomPainter {
     }
 
     final y = 24 + (size.height - 48) * progress;
-    final scanPaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0x00FFD35A), Color(0xAAFFD35A), Color(0x00FFD35A)],
-      ).createShader(Rect.fromLTWH(20, y - 1, size.width - 40, 2))
-      ..strokeWidth = 2;
+    final scanPaint =
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0x00FFD35A), Color(0xAAFFD35A), Color(0x00FFD35A)],
+          ).createShader(Rect.fromLTWH(20, y - 1, size.width - 40, 2))
+          ..strokeWidth = 2;
     canvas.drawLine(Offset(20, y), Offset(size.width - 20, y), scanPaint);
   }
 

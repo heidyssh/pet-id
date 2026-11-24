@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
+import 'location_picker.dart';
 import 'motion.dart';
 import 'pet_camera.dart';
 import 'welcome.dart';
@@ -127,11 +128,12 @@ class _PasswordRequirementChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = !started
-        ? accountMuted
-        : valid
-        ? const Color(0xFF176D61)
-        : const Color(0xFFB42318);
+    final foreground =
+        !started
+            ? accountMuted
+            : valid
+            ? const Color(0xFF176D61)
+            : const Color(0xFFB42318);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -140,8 +142,9 @@ class _PasswordRequirementChip extends StatelessWidget {
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, animation) =>
-                ScaleTransition(scale: animation, child: child),
+            transitionBuilder:
+                (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
             child: Icon(
               !started
                   ? Icons.circle_outlined
@@ -238,14 +241,15 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
                       order: fields.length < 10 ? fields.length : 10,
                       child: Pressable(
                         child: FilledButton(
-                          onPressed: busy
-                              ? null
-                              : () {
-                                  HapticFeedback.lightImpact();
-                                  if (!form.currentState!.validate()) return;
-                                  FocusScope.of(context).unfocus();
-                                  submit();
-                                },
+                          onPressed:
+                              busy
+                                  ? null
+                                  : () {
+                                    HapticFeedback.lightImpact();
+                                    if (!form.currentState!.validate()) return;
+                                    FocusScope.of(context).unfocus();
+                                    submit();
+                                  },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Text(busy ? 'Un momento…' : submitLabel),
@@ -431,9 +435,10 @@ class _AccountFormState extends _FormState<AccountForm> {
     final text = _sanitizeNameInput(next.text);
     if (text == next.text) return next;
 
-    int offset(int index) => index < 0
-        ? text.length
-        : _sanitizeNameInput(next.text.substring(0, index)).length;
+    int offset(int index) =>
+        index < 0
+            ? text.length
+            : _sanitizeNameInput(next.text.substring(0, index)).length;
 
     return next.copyWith(
       text: text,
@@ -453,40 +458,42 @@ class _AccountFormState extends _FormState<AccountForm> {
     label,
     ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
-      builder: (context, value, _) => TextFormField(
-        controller: controller,
-        enabled: !busy,
-        textCapitalization: TextCapitalization.words,
-        textInputAction: TextInputAction.next,
-        inputFormatters: [TextInputFormatter.withFunction(_formatNameInput)],
-        decoration: accountInput(hint).copyWith(
-          counterText:
-              '${_letterPattern.allMatches(value.text).length}/$_maxNameLetters',
-          counterStyle: const TextStyle(color: accountMuted),
-        ),
-        validator: (value) {
-          final name = value?.trim() ?? '';
-          if (name.isEmpty) return 'Completa este campo.';
-          if (!_namePattern.hasMatch(name)) {
-            return 'Usa solo letras y un espacio entre palabras.';
-          }
-          final letters = _letterPattern.allMatches(name).length;
-          if (letters < 2) return 'Escribe al menos dos letras.';
-          if (letters > _maxNameLetters) {
-            return 'Escribe un máximo de $_maxNameLetters letras.';
-          }
-          return null;
-        },
-      ),
+      builder:
+          (context, value, _) => TextFormField(
+            controller: controller,
+            enabled: !busy,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            inputFormatters: [
+              TextInputFormatter.withFunction(_formatNameInput),
+            ],
+            decoration: accountInput(hint).copyWith(
+              counterText:
+                  '${_letterPattern.allMatches(value.text).length}/$_maxNameLetters',
+              counterStyle: const TextStyle(color: accountMuted),
+            ),
+            validator: (value) {
+              final name = value?.trim() ?? '';
+              if (name.isEmpty) return 'Completa este campo.';
+              if (!_namePattern.hasMatch(name)) {
+                return 'Usa solo letras y un espacio entre palabras.';
+              }
+              final letters = _letterPattern.allMatches(name).length;
+              if (letters < 2) return 'Escribe al menos dos letras.';
+              if (letters > _maxNameLetters) {
+                return 'Escribe un máximo de $_maxNameLetters letras.';
+              }
+              return null;
+            },
+          ),
     ),
   );
 
   Widget _accountType(String label, {required bool organization}) {
     final selected = _organization == organization;
     return OutlinedButton(
-      onPressed: busy
-          ? null
-          : () => setState(() => _organization = organization),
+      onPressed:
+          busy ? null : () => setState(() => _organization = organization),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(60),
         foregroundColor: selected ? petInk : accountMuted,
@@ -512,9 +519,10 @@ class _AccountFormState extends _FormState<AccountForm> {
     final submitLabel = register ? 'Crear cuenta' : 'Iniciar sesión';
     return AccountLayout(
       title: register ? 'Crea tu cuenta' : '¡Hola de nuevo!',
-      subtitle: register
-          ? 'Así podrás registrar mascotas y recibir alertas cerca de ti.'
-          : 'Inicia sesión para ver a tus mascotas y las alertas de tu zona.',
+      subtitle:
+          register
+              ? 'Así podrás registrar mascotas y recibir alertas cerca de ti.'
+              : 'Inicia sesión para ver a tus mascotas y las alertas de tu zona.',
       busy: busy,
       footer: Wrap(
         alignment: WrapAlignment.center,
@@ -576,13 +584,14 @@ class _AccountFormState extends _FormState<AccountForm> {
                             child: Text('Refugio'),
                           ),
                         ],
-                        onChanged: busy
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() => _organizationType = value);
-                                }
-                              },
+                        onChanged:
+                            busy
+                                ? null
+                                : (value) {
+                                  if (value != null) {
+                                    setState(() => _organizationType = value);
+                                  }
+                                },
                       ),
                     ),
                     AccountField(
@@ -596,9 +605,11 @@ class _AccountFormState extends _FormState<AccountForm> {
                         decoration: accountInput(
                           'Nombre de tu veterinaria o refugio',
                         ),
-                        validator: (value) => (value?.trim().length ?? 0) < 2
-                            ? 'Escribe el nombre de la organización.'
-                            : null,
+                        validator:
+                            (value) =>
+                                (value?.trim().length ?? 0) < 2
+                                    ? 'Escribe el nombre de la organización.'
+                                    : null,
                       ),
                     ),
                   ],
@@ -614,8 +625,8 @@ class _AccountFormState extends _FormState<AccountForm> {
                         TextInputFormatter.withFunction(
                           (previous, next) =>
                               next.text.isEmpty || '2389'.contains(next.text[0])
-                              ? next
-                              : previous,
+                                  ? next
+                                  : previous,
                         ),
                         LengthLimitingTextInputFormatter(8),
                       ],
@@ -668,12 +679,10 @@ class _AccountFormState extends _FormState<AccountForm> {
                       register ? 'Mínimo 8 caracteres' : '••••••••',
                       icon: register ? null : Icons.lock_outline_rounded,
                       suffix: IconButton(
-                        tooltip: _hide
-                            ? 'Mostrar contraseña'
-                            : 'Ocultar contraseña',
-                        onPressed: busy
-                            ? null
-                            : () => setState(() => _hide = !_hide),
+                        tooltip:
+                            _hide ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                        onPressed:
+                            busy ? null : () => setState(() => _hide = !_hide),
                         icon: Icon(
                           _hide
                               ? Icons.visibility_outlined
@@ -681,15 +690,16 @@ class _AccountFormState extends _FormState<AccountForm> {
                         ),
                       ),
                     ),
-                    validator: register
-                        ? _validateNewPassword
-                        : (value) => value == null || value.isEmpty
-                              ? 'Escribe tu contraseña.'
-                              : null,
+                    validator:
+                        register
+                            ? _validateNewPassword
+                            : (value) =>
+                                value == null || value.isEmpty
+                                    ? 'Escribe tu contraseña.'
+                                    : null,
                     scrollPadding: const EdgeInsets.only(bottom: 280),
-                    onFieldSubmitted: register
-                        ? null
-                        : (_) => _submitValidated(),
+                    onFieldSubmitted:
+                        register ? null : (_) => _submitValidated(),
                   ),
                 ),
                 if (register) ...[
@@ -731,12 +741,13 @@ class _AccountFormState extends _FormState<AccountForm> {
         if (register)
           CheckboxListTile(
             value: _locationAlerts,
-            onChanged: busy
-                ? null
-                : (value) => setState(() {
-                    _locationAlerts = value ?? false;
-                    error = null;
-                  }),
+            onChanged:
+                busy
+                    ? null
+                    : (value) => setState(() {
+                      _locationAlerts = value ?? false;
+                      error = null;
+                    }),
             contentPadding: EdgeInsets.zero,
             activeColor: petOrange,
             checkColor: petInk,
@@ -848,9 +859,10 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
   @override
   Widget build(BuildContext context) => AccountLayout(
     title: 'Recupera tu contraseña',
-    subtitle: _usingLink
-        ? 'Copia y pega el enlace del correo de PetID.'
-        : 'Te enviaremos un enlace para cambiar tu contraseña.',
+    subtitle:
+        _usingLink
+            ? 'Copia y pega el enlace del correo de PetID.'
+            : 'Te enviaremos un enlace para cambiar tu contraseña.',
     busy: busy,
     children: [
       if (_notice case final notice?)
@@ -885,9 +897,11 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                   enableSuggestions: false,
                   keyboardType: TextInputType.url,
                   decoration: accountInput('Pega el enlace aquí'),
-                  validator: (value) => _token(value ?? '') == null
-                      ? 'Pega el enlace completo que recibiste.'
-                      : null,
+                  validator:
+                      (value) =>
+                          _token(value ?? '') == null
+                              ? 'Pega el enlace completo que recibiste.'
+                              : null,
                 ),
               ),
             if (_usingLink)
@@ -901,13 +915,16 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                   decoration: accountInput(
                     'Mínimo 8 caracteres',
                     suffix: IconButton(
-                      tooltip: _hidePassword
-                          ? 'Mostrar contraseña'
-                          : 'Ocultar contraseña',
-                      onPressed: busy
-                          ? null
-                          : () =>
-                                setState(() => _hidePassword = !_hidePassword),
+                      tooltip:
+                          _hidePassword
+                              ? 'Mostrar contraseña'
+                              : 'Ocultar contraseña',
+                      onPressed:
+                          busy
+                              ? null
+                              : () => setState(
+                                () => _hidePassword = !_hidePassword,
+                              ),
                       icon: Icon(
                         _hidePassword
                             ? Icons.visibility_outlined
@@ -934,23 +951,24 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
             ? 'Guardar contraseña'
             : 'Enviar enlace',
         loading: busy,
-        onPressed: busy
-            ? null
-            : () {
-                if (!form.currentState!.validate()) return;
-                FocusScope.of(context).unfocus();
-                _submit();
-              },
+        onPressed:
+            busy
+                ? null
+                : () {
+                  if (!form.currentState!.validate()) return;
+                  FocusScope.of(context).unfocus();
+                  _submit();
+                },
       ),
       accountLink(
         _usingLink ? 'Solicitar otro enlace' : 'Ya tengo el enlace',
         busy
             ? null
             : () => setState(() {
-                _hasLink = !_hasLink;
-                error = null;
-                _notice = null;
-              }),
+              _hasLink = !_hasLink;
+              error = null;
+              _notice = null;
+            }),
       ),
     ],
   );
@@ -970,13 +988,14 @@ class SightingForm extends StatefulWidget {
 }
 
 class _SightingFormState extends _FormState<SightingForm> {
-  final _place = TextEditingController();
   final _description = TextEditingController();
   final _picker = ImagePicker();
   XFile? _photo;
   String _capture = 'desconocida';
   double? _latitude;
   double? _longitude;
+  String? _locationLabel;
+  String? _locationError;
 
   @override
   void initState() {
@@ -1003,7 +1022,6 @@ class _SightingFormState extends _FormState<SightingForm> {
 
   @override
   void dispose() {
-    _place.dispose();
     _description.dispose();
     super.dispose();
   }
@@ -1016,13 +1034,51 @@ class _SightingFormState extends _FormState<SightingForm> {
       requestFullMetadata: false,
     );
     if (mounted && photo != null) {
-      setState(() {
-        _photo = photo;
-        _latitude = null;
-        _longitude = null;
-      });
+      setState(() => _photo = photo);
     }
   });
+
+  Future<void> _chooseLocation() async {
+    if (busy) return;
+    final selected = await Navigator.of(context).push<LocationSelection>(
+      MaterialPageRoute<LocationSelection>(
+        builder:
+            (_) => LocationPickerPage(
+              initialLatitude: _latitude,
+              initialLongitude: _longitude,
+              initialLabel: _locationLabel,
+            ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _latitude = selected.latitude;
+      _longitude = selected.longitude;
+      _locationLabel = selected.label;
+      _locationError = null;
+    });
+  }
+
+  Future<void> _resolveCapturedLocation(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final response = await context.read<PetIdApi>().request(
+        'GET',
+        '/mapas/geocodificar-reversa?latitud=$latitude&longitud=$longitude',
+      );
+      final items = (response['data'] as Map?)?['items'];
+      final first = items is List && items.isNotEmpty ? items.first : null;
+      final address = first is Map ? first['direccion'] : null;
+      if (!mounted || address is! String || address.trim().isEmpty) return;
+      if (_latitude == latitude && _longitude == longitude) {
+        setState(() => _locationLabel = address.trim());
+      }
+    } catch (_) {
+      // Las coordenadas siguen siendo válidas sin una dirección legible.
+    }
+  }
 
   Future<void> _takePhoto() async {
     if (busy) return;
@@ -1032,18 +1088,29 @@ class _SightingFormState extends _FormState<SightingForm> {
       ),
     );
     if (mounted && capture != null) {
+      final latitude = capture.latitude;
+      final longitude = capture.longitude;
       setState(() {
         _photo = capture.photo;
         _capture = 'desconocida';
-        _latitude = capture.latitude;
-        _longitude = capture.longitude;
+        _latitude = latitude;
+        _longitude = longitude;
+        _locationLabel =
+            latitude != null && longitude != null
+                ? 'Ubicación tomada con la foto'
+                : _locationLabel;
+        _locationError = null;
       });
+      if (latitude != null && longitude != null) {
+        unawaited(_resolveCapturedLocation(latitude, longitude));
+      }
     }
   }
 
   Future<void> _report() => perform(() async {
     final data = {
-      'referencia_lugar': _place.text.trim(),
+      if (_locationLabel?.trim().isNotEmpty == true)
+        'referencia_lugar': _locationLabel!.trim(),
       'descripcion': _description.text.trim(),
       'fecha_avistamiento': DateTime.now().toUtc().toIso8601String(),
       if (_latitude != null && _longitude != null)
@@ -1064,9 +1131,10 @@ class _SightingFormState extends _FormState<SightingForm> {
     }
     if (!mounted) return;
     if (photo != null) {
-      final result = response['data'] is Map
-          ? (response['data'] as Map)['resultado']
-          : null;
+      final result =
+          response['data'] is Map
+              ? (response['data'] as Map)['resultado']
+              : null;
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -1087,7 +1155,13 @@ class _SightingFormState extends _FormState<SightingForm> {
   });
 
   void _submitValidated() {
-    if (busy || !form.currentState!.validate()) return;
+    if (busy) return;
+    if (_latitude == null || _longitude == null) {
+      setState(() => _locationError = 'Selecciona el punto en el mapa.');
+      return;
+    }
+    setState(() => _locationError = null);
+    if (!form.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     _report();
   }
@@ -1104,20 +1178,13 @@ class _SightingFormState extends _FormState<SightingForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AccountField(
-              '¿Dónde viste a la mascota?',
-              TextFormField(
-                controller: _place,
-                enabled: !busy,
-                maxLength: 500,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: accountInput(
-                  'Barrio, calle o punto de referencia',
-                  icon: Icons.location_on_outlined,
-                ),
-                validator: _required,
-              ),
+            _ReportLocationCard(
+              label: _locationLabel,
+              error: _locationError,
+              enabled: !busy,
+              onTap: _chooseLocation,
             ),
+            const SizedBox(height: 18),
             AccountField(
               'Describe a la mascota',
               TextFormField(
@@ -1167,17 +1234,12 @@ class _SightingFormState extends _FormState<SightingForm> {
               _SelectedPhotoCard(
                 photo: photo,
                 enabled: !busy,
-                onRemove: () => setState(() {
-                  _photo = null;
-                  _capture = 'desconocida';
-                  _latitude = null;
-                  _longitude = null;
-                }),
+                onRemove:
+                    () => setState(() {
+                      _photo = null;
+                      _capture = 'desconocida';
+                    }),
               ),
-              if (_latitude != null && _longitude != null) ...[
-                const SizedBox(height: 10),
-                const _LocationAttachedBadge(),
-              ],
               const SizedBox(height: 16),
               const Text(
                 '¿A qué distancia tomaste la foto?',
@@ -1190,13 +1252,14 @@ class _SightingFormState extends _FormState<SightingForm> {
                 onChanged: (value) => setState(() => _capture = value),
               ),
             ],
-            if (error case final message?) ...[
-              const SizedBox(height: 16),
-              accountError(context, message),
-            ],
             const SizedBox(height: 22),
-            AccountButton(
-              busy ? 'Enviando reporte...' : 'Enviar reporte',
+            _ReportSubmitButton(
+              label:
+                  busy
+                      ? 'Enviando reporte...'
+                      : _photo == null
+                      ? 'Enviar avistamiento'
+                      : 'Buscar coincidencias y reportar',
               loading: busy,
               onPressed: busy ? null : _submitValidated,
             ),
@@ -1214,15 +1277,17 @@ class _ScanResultSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = result is Map
-        ? Map<String, dynamic>.from(result! as Map)
-        : const <String, dynamic>{};
-    final matches = data['coincidencias'] is List
-        ? (data['coincidencias'] as List)
-              .whereType<Map>()
-              .map(Map<String, dynamic>.from)
-              .toList()
-        : const <Map<String, dynamic>>[];
+    final data =
+        result is Map
+            ? Map<String, dynamic>.from(result! as Map)
+            : const <String, dynamic>{};
+    final matches =
+        data['coincidencias'] is List
+            ? (data['coincidencias'] as List)
+                .whereType<Map>()
+                .map(Map<String, dynamic>.from)
+                .toList()
+            : const <Map<String, dynamic>>[];
     final completed = data['procesamiento'] == 'visual_completado';
 
     return SafeArea(
@@ -1251,18 +1316,18 @@ class _ScanResultSheet extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: completed
-                          ? const Color(0xFFDDF5EE)
-                          : const Color(0xFFFFE8D8),
+                      color:
+                          completed
+                              ? const Color(0xFFDDF5EE)
+                              : const Color(0xFFFFE8D8),
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Icon(
                       completed
                           ? Icons.center_focus_strong_rounded
                           : Icons.info_outline_rounded,
-                      color: completed
-                          ? const Color(0xFF176D61)
-                          : petDarkOrange,
+                      color:
+                          completed ? const Color(0xFF176D61) : petDarkOrange,
                     ),
                   ),
                   const SizedBox(width: 13),
@@ -1281,8 +1346,8 @@ class _ScanResultSheet extends StatelessWidget {
                         Text(
                           completed
                               ? matches.isEmpty
-                                    ? 'No encontramos una coincidencia visual por ahora.'
-                                    : 'Estas son las mascotas visualmente más parecidas.'
+                                  ? 'No encontramos una coincidencia visual por ahora.'
+                                  : 'Estas son las mascotas visualmente más parecidas.'
                               : 'El reconocimiento visual no pudo completarse en este intento.',
                           style: const TextStyle(
                             color: accountMuted,
@@ -1302,10 +1367,11 @@ class _ScanResultSheet extends StatelessWidget {
                     physics: const BouncingScrollPhysics(),
                     itemCount: matches.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) => Reveal(
-                      order: index,
-                      child: _VisualMatchCard(match: matches[index]),
-                    ),
+                    itemBuilder:
+                        (_, index) => Reveal(
+                          order: index,
+                          child: _VisualMatchCard(match: matches[index]),
+                        ),
                   ),
                 )
               else
@@ -1391,19 +1457,24 @@ class _VisualMatchCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: SizedBox.square(
               dimension: 64,
-              child: photo == null
-                  ? const ColoredBox(
-                      color: Color(0xFFFFE8D8),
-                      child: Icon(Icons.pets_rounded, color: petDarkOrange),
-                    )
-                  : Image.network(
-                      photo,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const ColoredBox(
+              child:
+                  photo == null
+                      ? const ColoredBox(
                         color: Color(0xFFFFE8D8),
                         child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                      )
+                      : Image.network(
+                        photo,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (_, _, _) => const ColoredBox(
+                              color: Color(0xFFFFE8D8),
+                              child: Icon(
+                                Icons.pets_rounded,
+                                color: petDarkOrange,
+                              ),
+                            ),
                       ),
-                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1490,59 +1561,258 @@ class _SelectedPhotoCard extends StatelessWidget {
   final VoidCallback onRemove;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: accountBorder, width: 2),
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(22),
+    child: SizedBox(
+      height: 190,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          FutureBuilder(
+            future: photo.readAsBytes(),
+            builder: (context, snapshot) {
+              final bytes = snapshot.data;
+              if (bytes == null) {
+                return const ColoredBox(
+                  color: Color(0xFFFFE8D8),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return Image.memory(bytes, fit: BoxFit.cover);
+            },
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Color(0xB8000000)],
+                stops: [.48, 1],
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 16,
+            right: 62,
+            bottom: 15,
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD064)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Foto lista para buscar coincidencias',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton.filled(
+              tooltip: 'Quitar foto',
+              onPressed: enabled ? onRemove : null,
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xDDFFFFFF),
+                foregroundColor: petInk,
+              ),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+        ],
+      ),
     ),
-    child: Row(
+  );
+}
+
+class _ReportLocationCard extends StatelessWidget {
+  const _ReportLocationCard({
+    required this.label,
+    required this.error,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String? label;
+  final String? error;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = label?.trim().isNotEmpty == true;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox.square(
-            dimension: 66,
-            child: FutureBuilder(
-              future: photo.readAsBytes(),
-              builder: (context, snapshot) {
-                final bytes = snapshot.data;
-                if (bytes == null) {
-                  return const ColoredBox(
-                    color: Color(0xFFFFE8D8),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                return Image.memory(bytes, fit: BoxFit.cover);
-              },
+        const Text(
+          '¿Dónde viste a la mascota?',
+          style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 7),
+        Material(
+          color: selected ? const Color(0xFFF1FBF8) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(
+              color:
+                  error != null
+                      ? const Color(0xFFE05A67)
+                      : selected
+                      ? const Color(0xFF7EDCC8)
+                      : accountBorder,
+              width: 2,
+            ),
+          ),
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color:
+                          selected
+                              ? const Color(0xFFCCF3E9)
+                              : const Color(0xFFFFE7D5),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      selected ? Icons.location_on_rounded : Icons.map_outlined,
+                      color: selected ? const Color(0xFF087460) : petDarkOrange,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selected ? label! : 'Elegir en el mapa',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: petInk,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          selected
+                              ? 'Toca para ajustar el punto'
+                              : 'Marca el lugar exacto o usa tu GPS',
+                          style: const TextStyle(
+                            color: accountMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    selected
+                        ? Icons.edit_location_alt_outlined
+                        : Icons.chevron_right_rounded,
+                    color: selected ? const Color(0xFF087460) : petDarkOrange,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Foto lista para escanear',
-                style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                photo.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: accountMuted, fontSize: 12),
-              ),
-            ],
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFEDF0),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFFB9254F),
+                  size: 19,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    error!,
+                    style: const TextStyle(
+                      color: Color(0xFF92203F),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          tooltip: 'Quitar foto',
-          onPressed: enabled ? onRemove : null,
-          icon: const Icon(Icons.close_rounded),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReportSubmitButton extends StatelessWidget {
+  const _ReportSubmitButton({
+    required this.label,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      gradient: const LinearGradient(
+        colors: [Color(0xFFFFA052), Color(0xFFFF823D)],
+      ),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x3DFF7D32),
+          blurRadius: 16,
+          offset: Offset(0, 7),
         ),
       ],
+    ),
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon:
+          loading
+              ? const SizedBox.square(
+                dimension: 19,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: petInk,
+                ),
+              )
+              : const Icon(Icons.send_rounded),
+      label: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: Text(label, key: ValueKey(label)),
+      ),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(60),
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
+        foregroundColor: petInk,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+      ),
     ),
   );
 }
@@ -1586,35 +1856,5 @@ class _CaptureDistance extends StatelessWidget {
           ),
         ),
     ],
-  );
-}
-
-class _LocationAttachedBadge extends StatelessWidget {
-  const _LocationAttachedBadge();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-    decoration: BoxDecoration(
-      color: const Color(0xFFDDF5EE),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFF98D8C9)),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.location_on_rounded, color: Color(0xFF16816D), size: 20),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'Ubicación agregada al reporte',
-            style: TextStyle(
-              color: Color(0xFF166A5B),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Icon(Icons.check_circle_rounded, color: Color(0xFF16816D), size: 19),
-      ],
-    ),
   );
 }

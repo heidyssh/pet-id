@@ -61,6 +61,10 @@ export async function crearAvistamiento(
   idUsuario = null,
   generarCandidatos = true
 ) {
+  const ahora = new Date();
+  const fechaSolicitada = new Date(datos.fecha_avistamiento);
+  const fechaAvistamiento = fechaSolicitada > ahora ? ahora : fechaSolicitada;
+
   if (datos.id_especie != null) {
     const especie = await Especie.findByPk(
       datos.id_especie
@@ -77,9 +81,7 @@ export async function crearAvistamiento(
   const avistamiento = await Avistamiento.create({
     id_usuario: idUsuario,
     id_especie: datos.id_especie ?? null,
-    fecha_avistamiento: new Date(
-      datos.fecha_avistamiento
-    ),
+    fecha_avistamiento: fechaAvistamiento,
     ubicacion: crearPuntoGeografico(
       datos.ubicacion
     ),

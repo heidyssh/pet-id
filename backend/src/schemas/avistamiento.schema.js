@@ -1,6 +1,8 @@
 
 import { z } from 'zod';
 
+const MARGEN_RELOJ_MS = 5 * 60 * 1000;
+
 const ubicacionSchema = z.strictObject({
   latitud: z.number().min(-90).max(90),
   longitud: z.number().min(-180).max(180),
@@ -17,7 +19,7 @@ export const crearAvistamientoSchema = z.strictObject({
   fecha_avistamiento: z.iso.datetime({
     offset: true,
   }).refine(
-    (fecha) => new Date(fecha).getTime() <= Date.now(),
+    (fecha) => new Date(fecha).getTime() <= Date.now() + MARGEN_RELOJ_MS,
     'La fecha no puede estar en el futuro'
   ),
 
@@ -64,7 +66,7 @@ export const crearAvistamientoSchema = z.strictObject({
 export const escanearAvistamientoSchema = z.strictObject({
   id_especie: z.number().int().positive().max(32767).nullable().optional(),
   fecha_avistamiento: z.iso.datetime({ offset: true }).refine(
-    (fecha) => new Date(fecha).getTime() <= Date.now(),
+    (fecha) => new Date(fecha).getTime() <= Date.now() + MARGEN_RELOJ_MS,
     'La fecha no puede estar en el futuro'
   ),
   ubicacion: ubicacionSchema.nullable().optional(),

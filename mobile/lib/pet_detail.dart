@@ -33,6 +33,8 @@ class _PetDetailPageState extends State<PetDetailPage> {
   bool _offlineReady = false;
   bool _changed = false;
   String? _error;
+  String? _historyError;
+  int _photoIndex = 0;
 
   String get _id => '${_pet['id_mascota']}';
   String get _cacheKey => 'petid.pet.$_id';
@@ -66,34 +68,48 @@ class _PetDetailPageState extends State<PetDetailPage> {
     }
 
     try {
-      final responses = await Future.wait([
-        session.authRequest('GET', '/mascotas/$_id'),
-        session.authRequest('GET', '/historial-clinico/mascotas/$_id'),
-      ]);
-      final pet = Map<String, dynamic>.from(responses[0]['data'] as Map);
-      final historyData = responses[1]['data'] as Map;
-      final history = _maps(historyData['items']);
+      final response = await session.authRequest('GET', '/mascotas/$_id');
+      final pet = Map<String, dynamic>.from(response['data'] as Map);
       if (!mounted) return;
       setState(() {
         _pet = pet;
-        _history = history;
         _offlineReady = true;
       });
-      try {
-        await _storage.write(
-          key: _cacheKey,
-          value: jsonEncode({'pet': pet, 'history': history}),
-        );
-      } catch (_) {
-        if (mounted) setState(() => _offlineReady = false);
-      }
     } catch (_) {
       if (mounted && !_offlineReady) {
         setState(() => _error = 'No pudimos actualizar la ficha.');
       }
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
+
+    try {
+      final response = await session.authRequest(
+        'GET',
+        '/historial-clinico/mascotas/$_id',
+      );
+      final historyData = response['data'] as Map;
+      if (mounted) {
+        setState(() {
+          _history = _maps(historyData['items']);
+          _historyError = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _historyError = 'No pudimos actualizar el historial.');
+      }
+    }
+
+    if (mounted && _offlineReady) {
+      try {
+        await _storage.write(
+          key: _cacheKey,
+          value: jsonEncode({'pet': _pet, 'history': _history}),
+        );
+      } catch (_) {
+        // La ficha en línea sigue disponible aunque falle la caché.
+      }
+    }
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _reportLost() async {
@@ -131,11 +147,30 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
+  Future<void> _editPet() async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditPetSheet(pet: _pet),
+    );
+    if (updated != true || !mounted) return;
+    _changed = true;
+    await _load();
+    if (!mounted) return;
+    showPetToast(
+      context,
+      'Ficha de ${_pet['nombre']} actualizada.',
+      type: PetToastType.success,
+    );
+  }
+
   void _close() => Navigator.of(context).pop(_changed);
 
   @override
   Widget build(BuildContext context) {
-    final photo = context.read<PetIdApi>().imageUrl(_photoOf(_pet));
+    final photos = _galleryOf(context, _pet);
     final lost = _pet['estado'] == 'perdido';
     return Scaffold(
       backgroundColor: _peach,
@@ -149,7 +184,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              SliverToBoxAdapter(child: _hero(photo)),
+              SliverToBoxAdapter(child: _hero(photos)),
               SliverToBoxAdapter(
                 child: Container(
                   constraints: BoxConstraints(
@@ -208,64 +243,102 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
-  Widget _hero(String? photo) => SizedBox(
-    height: 300,
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        if (photo == null)
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
-              SizedBox(height: 12),
-              Text(
-                'Foto de la mascota',
-                style: TextStyle(
-                  color: petDarkOrange,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+  Widget _hero(List<String> photos) => ClipRRect(
+    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(34)),
+    child: SizedBox(
+      height: 330,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (photos.isEmpty)
+            const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
+                SizedBox(height: 12),
+                Text(
+                  'Foto de la mascota',
+                  style: TextStyle(
+                    color: petDarkOrange,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            )
+          else
+            PageView.builder(
+              itemCount: photos.length,
+              onPageChanged: (index) => setState(() => _photoIndex = index),
+              itemBuilder: (_, index) => Image.network(
+                photos[index],
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const ColoredBox(
+                  color: _peach,
+                  child: Center(
+                    child: Icon(
+                      Icons.pets_rounded,
+                      color: petDarkOrange,
+                      size: 70,
+                    ),
+                  ),
                 ),
               ),
-            ],
-          )
-        else
-          Image.network(
-            photo,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const Center(
-              child: Icon(Icons.pets_rounded, color: petDarkOrange, size: 70),
             ),
-          ),
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x55000000), Colors.transparent],
-            ),
-          ),
-        ),
-        Positioned(
-          top: 18,
-          left: 18,
-          right: 18,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _OfflineBadge(
-                  key: ValueKey((_offlineReady, _loading)),
-                  ready: _offlineReady,
-                  loading: _loading,
-                ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x55000000), Colors.transparent],
               ),
-            ],
+            ),
           ),
-        ),
-      ],
+          Positioned(
+            top: 18,
+            left: 18,
+            right: 18,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _OfflineBadge(
+                    key: ValueKey((_offlineReady, _loading)),
+                    ready: _offlineReady,
+                    loading: _loading,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (photos.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 18,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var index = 0; index < photos.length; index++)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: index == _photoIndex ? 22 : 7,
+                      height: 7,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: index == _photoIndex
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
     ),
   );
 
@@ -292,6 +365,22 @@ class _PetDetailPageState extends State<PetDetailPage> {
       Text(
         '${_petId(_pet['id_mascota'])}  ·  ${_registered(_pet['fecha_registro'])}',
         style: const TextStyle(color: accountMuted, fontSize: 14),
+      ),
+      const SizedBox(height: 12),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: _editPet,
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          label: const Text('Editar ficha'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: petDarkOrange,
+            side: const BorderSide(color: accountBorder, width: 2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+        ),
       ),
     ],
   );
@@ -377,7 +466,11 @@ class _PetDetailPageState extends State<PetDetailPage> {
           ],
         ),
         const SizedBox(height: 13),
-        if (items.isEmpty)
+        if (_historyError != null) ...[
+          _InfoBox(text: _historyError!, action: 'Reintentar', onAction: _load),
+          if (items.isNotEmpty) const SizedBox(height: 10),
+        ],
+        if (items.isEmpty && _historyError == null)
           const _InfoBox(
             text: 'Aún no hay vacunas ni desparasitaciones registradas.',
           )
@@ -389,6 +482,268 @@ class _PetDetailPageState extends State<PetDetailPage> {
       ],
     );
   }
+}
+
+class _EditPetSheet extends StatefulWidget {
+  const _EditPetSheet({required this.pet});
+  final Map<String, dynamic> pet;
+
+  @override
+  State<_EditPetSheet> createState() => _EditPetSheetState();
+}
+
+class _EditPetSheetState extends State<_EditPetSheet> {
+  final _form = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _color;
+  late final TextEditingController _marks;
+  String? _sex;
+  String? _size;
+  DateTime? _birthDate;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: '${widget.pet['nombre'] ?? ''}');
+    _color = TextEditingController(
+      text: '${widget.pet['color_principal'] ?? ''}',
+    );
+    _marks = TextEditingController(
+      text: '${widget.pet['senas_particulares'] ?? ''}',
+    );
+    _sex = widget.pet['sexo']?.toString();
+    _size = widget.pet['tamano']?.toString();
+    _birthDate = DateTime.tryParse('${widget.pet['fecha_nacimiento']}');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _color.dispose();
+    _marks.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickBirthDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate:
+          _birthDate ?? DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime(1990),
+      lastDate: DateTime.now(),
+      helpText: 'Fecha de nacimiento',
+    );
+    if (selected != null && mounted) setState(() => _birthDate = selected);
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+    if (!_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<Session>().authRequest(
+        'PATCH',
+        '/mascotas/${widget.pet['id_mascota']}',
+        body: {
+          'nombre': _name.text.trim(),
+          'sexo': _sex,
+          'color_principal': _color.text.trim(),
+          'tamano': _size,
+          'senas_particulares': _marks.text.trim().isEmpty
+              ? null
+              : _marks.text.trim(),
+          'fecha_nacimiento': _birthDate == null
+              ? null
+              : _dateOnly(_birthDate!),
+        },
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error is ApiError
+              ? error.message
+              : 'No se pudo actualizar la ficha.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedPadding(
+    duration: const Duration(milliseconds: 220),
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .9,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Editar ficha',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${_species(widget.pet)} · ${widget.pet['raza']?['nombre'] ?? 'Sin raza especificada'}',
+                style: const TextStyle(color: accountMuted),
+              ),
+              const SizedBox(height: 18),
+              AccountField(
+                'Nombre',
+                TextFormField(
+                  controller: _name,
+                  enabled: !_busy,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: accountInput('Nombre de la mascota'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Escribe su nombre.'
+                      : null,
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: AccountField(
+                      'Sexo',
+                      DropdownButtonFormField<String>(
+                        value: _sex,
+                        decoration: accountInput('Seleccionar'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'hembra',
+                            child: Text('Hembra'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'macho',
+                            child: Text('Macho'),
+                          ),
+                        ],
+                        onChanged: _busy
+                            ? null
+                            : (value) => setState(() => _sex = value),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: AccountField(
+                      'Tamaño',
+                      DropdownButtonFormField<String>(
+                        value: _size,
+                        decoration: accountInput('Seleccionar'),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'pequeno',
+                            child: Text('Pequeño'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'mediano',
+                            child: Text('Mediano'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'grande',
+                            child: Text('Grande'),
+                          ),
+                        ],
+                        onChanged: _busy
+                            ? null
+                            : (value) => setState(() => _size = value),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              AccountField(
+                'Color',
+                TextFormField(
+                  controller: _color,
+                  enabled: !_busy,
+                  decoration: accountInput('Color principal'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Escribe el color.'
+                      : null,
+                ),
+              ),
+              AccountField(
+                'Fecha de nacimiento',
+                _DateField(
+                  value: _birthDate == null
+                      ? 'Seleccionar fecha'
+                      : _date(_birthDate!),
+                  muted: _birthDate == null,
+                  onTap: _pickBirthDate,
+                  onClear: _birthDate == null
+                      ? null
+                      : () => setState(() => _birthDate = null),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 14),
+                child: Text(
+                  'La edad se calcula automáticamente a partir de esta fecha.',
+                  style: TextStyle(color: accountMuted, fontSize: 12),
+                ),
+              ),
+              AccountField(
+                'Señas particulares',
+                TextFormField(
+                  controller: _marks,
+                  enabled: !_busy,
+                  minLines: 3,
+                  maxLines: 5,
+                  maxLength: 2000,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: accountInput(
+                    'Manchas, cicatrices, comportamiento...',
+                  ),
+                ),
+              ),
+              if (_error != null) accountError(context, _error!),
+              const SizedBox(height: 14),
+              AccountButton(
+                _busy ? 'Guardando...' : 'Guardar cambios',
+                loading: _busy,
+                onPressed: _busy ? null : _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _HealthRecordSheet extends StatefulWidget {
@@ -1101,14 +1456,17 @@ List<Map<String, dynamic>> _maps(Object? value) => value is List
     ? value.whereType<Map>().map(Map<String, dynamic>.from).toList()
     : const [];
 
-String? _photoOf(Map<String, dynamic> pet) {
+List<String> _galleryOf(BuildContext context, Map<String, dynamic> pet) {
   final photos = _maps(pet['fotos']);
-  if (photos.isEmpty) return null;
-  final main = photos.firstWhere(
-    (photo) => photo['es_principal'] == true,
-    orElse: () => photos.first,
-  );
-  return (main['url_recorte'] ?? main['url_original']) as String?;
+  photos.sort((a, b) {
+    if (a['es_principal'] == b['es_principal']) return 0;
+    return a['es_principal'] == true ? -1 : 1;
+  });
+  return photos
+      .map((photo) => photo['url_original'] ?? photo['url_recorte'])
+      .map(context.read<PetIdApi>().imageUrl)
+      .whereType<String>()
+      .toList();
 }
 
 String _petId(Object? value) => 'ID PET-${value.toString().padLeft(4, '0')}';

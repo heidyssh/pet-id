@@ -39,6 +39,10 @@ function obtenerFiltros(query) {
   return resultado.data;
 }
 
+function mensajeValidacion(resultado, fallback) {
+  return resultado.error?.issues?.[0]?.message ?? fallback;
+}
+
 // Avistamiento anónimo
 export const registrarAnonimo = asyncHandler(
   async (req, res) => {
@@ -70,7 +74,10 @@ export const registrarAnonimoConFoto = asyncHandler(
 
     const validacion = crearAvistamientoSchema.safeParse(datos);
     if (!validacion.success) {
-      throw new AppError('Datos del avistamiento inválidos', 400);
+      throw new AppError(
+        mensajeValidacion(validacion, 'Datos del avistamiento inválidos'),
+        400
+      );
     }
 
     const avistamiento = await crearAvistamiento(validacion.data, null, false);
@@ -110,7 +117,10 @@ async function procesarEscaneo(req, res, idUsuario) {
 
   const validacion = escanearAvistamientoSchema.safeParse(datos);
   if (!validacion.success) {
-    throw new AppError('Datos del escaneo inválidos', 400);
+    throw new AppError(
+      mensajeValidacion(validacion, 'Datos del escaneo inválidos'),
+      400
+    );
   }
 
   const avistamiento = await crearAvistamiento(validacion.data, idUsuario, false);
