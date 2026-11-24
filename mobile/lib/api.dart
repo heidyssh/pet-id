@@ -18,12 +18,12 @@ class PetIdApi {
 
   Uri _uri(String path) {
     const configured = String.fromEnvironment('PETID_API_URL');
+    // En desarrollo, el celular (o emulador) llega al backend de la PC por
+    // `adb reverse tcp:3000 tcp:3000`, así que basta con 127.0.0.1.
     final base = configured.isNotEmpty
         ? configured
         : kDebugMode
-        ? (defaultTargetPlatform == TargetPlatform.android
-              ? 'http://10.0.2.2:3000/api'
-              : 'http://127.0.0.1:3000/api')
+        ? 'http://127.0.0.1:3000/api'
         : '';
     final uri = Uri.tryParse(base);
     if (uri == null ||

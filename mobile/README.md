@@ -19,7 +19,8 @@ flutter pub get
 flutter run
 ```
 
-El emulador Android usa por defecto `http://10.0.2.2:3000/api` en modo debug.
+En modo debug la app usa `http://127.0.0.1:3000/api`, que llega al backend
+mediante `adb reverse` (lo hace `.un-phone.ps1`).
 Si usas un teléfono Android conectado por USB o **Wireless debugging**,
 redirige el puerto del backend a ese dispositivo. Usa el ID de `flutter devices`:
 
