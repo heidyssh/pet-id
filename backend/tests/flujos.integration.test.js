@@ -9,15 +9,20 @@ import { app } from '../src/app.js';
 import { sequelize } from '../src/config/sequelize.js';
 import * as modelos from '../src/models/index.js';
 import { crearSesionConTokens } from '../src/services/sesion.service.js';
+import { actualizarPerfil, registrarUsuario } from '../src/services/auth.service.js';
 import { crearMascota } from '../src/services/mascota.service.js';
 import { crearReporteExtravio, obtenerExtravioPublico, resolverExtravio } from '../src/services/extravio.service.js';
 import { crearAvistamiento, obtenerAvistamiento } from '../src/services/avistamiento.service.js';
 import { listarCoincidenciasReporte } from '../src/services/coincidencia.service.js';
 import { agregarFotoMascota, agregarFotoAvistamiento } from '../src/services/foto.service.js';
 import { crearOrganizacion, guardarMembresia, verificarOrganizacion } from '../src/services/organizacion.service.js';
-import { crearRegistroClinico, historialDeMascota } from '../src/services/historial.service.js';
+import {
+  crearRegistroClinico, crearRegistroClinicoPropio, historialDeMascota,
+} from '../src/services/historial.service.js';
 import { crearPublicacion, solicitarAdopcion, revisarSolicitud } from '../src/services/adopcion.service.js';
-import { actualizarUbicacionAlertas } from '../src/services/alertaUbicacion.service.js';
+import {
+  actualizarUbicacionAlertas, obtenerUbicacionAlertas,
+} from '../src/services/alertaUbicacion.service.js';
 import { registrarDispositivoPush, eliminarDispositivoPush } from '../src/services/push.service.js';
 
 const sufijo = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -31,10 +36,27 @@ try {
     nombre: `Prueba${indice}`,
     apellido: 'Integración',
     correo,
+    telefono: `+5049000000${indice + 1}`,
     password_hash: 'hash-no-utilizado',
     activo: true,
     correo_verificado: true,
   })), { returning: true });
+
+  await assert.rejects(
+    () => registrarUsuario({
+      nombre: 'Correo', apellido: 'Duplicado', correo: correos[0],
+      telefono: '+50490000009', password: 'PetId123!',
+    }),
+    /correo ya está registrado/i
+  );
+  await assert.rejects(
+    () => registrarUsuario({
+      nombre: 'Telefono', apellido: 'Duplicado',
+      correo: `telefono-${sufijo}@petid.local`,
+      telefono: '+50490000001', password: 'PetId123!',
+    }),
+    /teléfono ya está registrado/i
+  );
 
   const rol = await modelos.Rol.findOne({ where: { nombre: 'ciudadano' } });
   await modelos.UsuarioRol.bulkCreate(usuarios.map((usuario) => ({ id_usuario: usuario.id_usuario, id_rol: rol.id_rol })));
@@ -51,6 +73,17 @@ try {
   const tokens = await crearSesionConTokens(usuarios[0], 'prueba integrada');
   assert.ok(tokens.access_token && tokens.refresh_token);
 
+  const perfilActualizado = await actualizarPerfil(usuarios[0].id_usuario, {
+    nombre: 'PerfilPrueba',
+    telefono: '+50499999991',
+  });
+  assert.equal(perfilActualizado.nombre, 'PerfilPrueba');
+  assert.equal(perfilActualizado.telefono, '+50499999991');
+  await assert.rejects(
+    actualizarPerfil(usuarios[1].id_usuario, { telefono: '+50499999991' }),
+    /teléfono ya está registrado/i
+  );
+
   const mascota = await crearMascota({
     nombre: 'Luna', id_especie: 1, color_principal: 'café', tamano: 'mediano',
     senas_particulares: 'mancha blanca',
@@ -60,6 +93,10 @@ try {
     ubicacion: { latitud: 15.7836, longitud: -86.7917 },
     radio_km: 10,
   });
+  const ubicacionAlertas = await obtenerUbicacionAlertas(usuarios[1].id_usuario);
+  assert.equal(ubicacionAlertas.activa, true);
+  assert.equal(ubicacionAlertas.radio_km, 10);
+  assert.ok(ubicacionAlertas.ubicacion?.latitud);
 
   const reporte = await crearReporteExtravio({
     id_mascota: mascota.id_mascota,
@@ -155,8 +192,22 @@ try {
     where: { id_usuario: usuarios[1].id_usuario, id_rol: rolVeterinario.id_rol },
   }));
   await crearRegistroClinico({ tipo_registro: 'vacuna', descripcion: 'Vacuna de prueba', fecha_aplicacion: '2026-11-11' }, mascota.id_mascota, organizacion, usuarios[0].id_usuario);
+  const registroPropio = await crearRegistroClinicoPropio({
+    tipo_registro: 'desparasitacion',
+    descripcion: 'Registro del propietario',
+    fecha_aplicacion: '2026-11-12',
+  }, mascota.id_mascota, usuarios[0].id_usuario);
+  assert.equal(registroPropio.id_organizacion, null);
+  await assert.rejects(
+    crearRegistroClinicoPropio({
+      tipo_registro: 'vacuna',
+      descripcion: 'Intento sin autorizacion',
+      fecha_aplicacion: '2026-11-12',
+    }, mascota.id_mascota, usuarios[1].id_usuario),
+    (error) => error.statusCode === 404
+  );
   const historial = await historialDeMascota(String(mascota.id_mascota), usuarios[0].id_usuario);
-  assert.equal(historial.items.length, 1);
+  assert.equal(historial.items.length, 2);
 
   const publicacion = await crearPublicacion({ id_mascota: mascota.id_mascota, descripcion: 'Mascota de prueba disponible para un hogar responsable.' }, usuarios[0].id_usuario);
   const solicitud = await solicitarAdopcion(publicacion.id_publicacion, usuarios[1].id_usuario, 'Solicitud de prueba');

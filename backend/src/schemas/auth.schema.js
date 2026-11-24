@@ -14,6 +14,7 @@ const passwordSchema = z.string()
   .regex(/[A-Z]/, 'La contraseña debe incluir una letra mayúscula')
   .regex(/[a-z]/, 'La contraseña debe incluir una letra minúscula')
   .regex(/[0-9]/, 'La contraseña debe incluir un número')
+  .regex(/[^\p{L}\p{N}\s]/u, 'La contraseña debe incluir un símbolo')
   .refine(
     (valor) => Buffer.byteLength(valor, 'utf8') <= 72,
     'La contraseña es demasiado larga'
@@ -31,19 +32,30 @@ const nombrePersonaSchema = z.string()
   .refine((valor) => Array.from(valor).length <= 100,
     'El texto contiene demasiados signos combinados');
 
+const telefonoSchema = z.string({ error: 'Escribe tu teléfono' })
+  .trim()
+  .regex(/^(?:\+504)?[2389][0-9]{7}$/, 'Escribe 8 dígitos que empiecen con 2, 3, 8 o 9')
+  .transform((valor) => valor.startsWith('+504') ? valor : `+504${valor}`);
+
 export const registroSchema = z.strictObject({
   nombre: nombrePersonaSchema,
   apellido: nombrePersonaSchema,
   correo: correoSchema,
   password: passwordSchema,
-  telefono: z.string({ error: 'Escribe tu teléfono' })
-    .trim()
-    .regex(/^(?:\+504)?[2389][0-9]{7}$/, 'Escribe 8 dígitos que empiecen con 2, 3, 8 o 9')
-    .transform((valor) => valor.startsWith('+504') ? valor : `+504${valor}`),
+  telefono: telefonoSchema,
   dni: z.string().trim().min(1).max(20).optional(),
   organizacion: crearOrganizacionSchema.omit({ cargo: true }).optional(),
   alertas_ubicacion: actualizarAlertaUbicacionSchema.optional(),
 });
+
+export const actualizarPerfilSchema = z.strictObject({
+  nombre: nombrePersonaSchema.optional(),
+  apellido: nombrePersonaSchema.optional(),
+  telefono: telefonoSchema.optional(),
+}).refine(
+  (datos) => Object.keys(datos).length > 0,
+  'Debe enviar al menos un campo'
+);
 
 export const loginSchema = z.strictObject({
   correo: correoSchema,

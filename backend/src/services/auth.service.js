@@ -1,6 +1,7 @@
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { Op } from 'sequelize';
 
 import { sequelize } from '../config/sequelize.js';
 import { Usuario, Rol, UsuarioRol } from '../models/index.js';
@@ -64,6 +65,22 @@ export async function crearCiudadano(datos, transaction) {
 }
 
 export async function registrarUsuario(datos) {
+  const existente = await Usuario.unscoped().findOne({
+    where: {
+      [Op.or]: [
+        { correo: datos.correo },
+        { telefono: datos.telefono },
+      ],
+    },
+    attributes: ['correo', 'telefono'],
+  });
+  if (existente?.correo === datos.correo) {
+    throw new AppError('Este correo ya está registrado', 409);
+  }
+  if (existente?.telefono === datos.telefono) {
+    throw new AppError('Este teléfono ya está registrado', 409);
+  }
+
   const password_hash = await bcrypt.hash(
     datos.password,
     HASH_ROUNDS
@@ -94,8 +111,13 @@ export async function registrarUsuario(datos) {
     });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
+      const campo = error.errors?.[0]?.path;
       throw new AppError(
-        'No se pudo registrar una cuenta con esos datos',
+        campo === 'telefono'
+          ? 'Este teléfono ya está registrado'
+          : campo === 'correo'
+          ? 'Este correo ya está registrado'
+          : 'No se pudo registrar una cuenta con esos datos',
         409
       );
     }
@@ -163,4 +185,27 @@ export async function obtenerPerfil(idUsuario) {
     ...datosPublicos(usuario),
     roles: usuario.roles.map((rol) => rol.nombre),
   };
+}
+
+export async function actualizarPerfil(idUsuario, datos) {
+  const usuario = await Usuario.findByPk(idUsuario);
+  if (!usuario || !usuario.activo) {
+    throw new AppError('Usuario no autorizado', 401);
+  }
+  if (datos.telefono && datos.telefono !== usuario.telefono) {
+    const existente = await Usuario.unscoped().findOne({
+      where: { telefono: datos.telefono, id_usuario: { [Op.ne]: idUsuario } },
+      attributes: ['id_usuario'],
+    });
+    if (existente) throw new AppError('Este teléfono ya está registrado', 409);
+  }
+  try {
+    await usuario.update(datos);
+  } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      throw new AppError('Este teléfono ya está registrado', 409);
+    }
+    throw error;
+  }
+  return datosPublicos(usuario);
 }

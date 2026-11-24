@@ -4,6 +4,7 @@ import { listar, leer } from '../controllers/notificacion.controller.js';
 import {
   actualizarUbicacion,
   desactivarUbicacion,
+  consultarUbicacion,
   registrarDispositivo,
   eliminarDispositivo,
 } from '../controllers/notificacion.controller.js';
@@ -17,6 +18,7 @@ import {
 const router = Router();
 router.use(verificarToken);
 router.get('/', listar);
+router.get('/ubicacion-alertas', consultarUbicacion);
 router.put('/ubicacion-alertas', validar(actualizarAlertaUbicacionSchema), actualizarUbicacion);
 router.delete('/ubicacion-alertas', desactivarUbicacion);
 router.post('/dispositivos', validar(registrarDispositivoPushSchema), registrarDispositivo);

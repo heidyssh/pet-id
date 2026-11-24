@@ -117,15 +117,15 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     super.build(context);
     return LayoutBuilder(
       builder: (_, constraints) {
-        final panelHeight = (constraints.maxHeight * .45).clamp(310.0, 430.0);
+        final collapsedPanel = constraints.maxHeight * .24;
         return Stack(
           children: [
-            Positioned.fill(bottom: panelHeight - 24, child: _mapView()),
+            Positioned.fill(child: _mapView()),
             Positioned(left: 20, top: 18, child: _title()),
             Positioned(left: 20, right: 20, top: 88, child: _filters()),
             Positioned(
               right: 18,
-              bottom: panelHeight + 12,
+              bottom: collapsedPanel + 12,
               child: FloatingActionButton.small(
                 heroTag: 'nearby-location',
                 backgroundColor: Colors.white,
@@ -147,9 +147,13 @@ class _NearbyMapPageState extends State<NearbyMapPage>
                     : const Icon(Icons.my_location_rounded),
               ),
             ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: _panel(panelHeight),
+            DraggableScrollableSheet(
+              minChildSize: .24,
+              initialChildSize: .45,
+              maxChildSize: .82,
+              snap: true,
+              snapSizes: const [.24, .45, .82],
+              builder: (_, scrollController) => _panel(scrollController),
             ),
           ],
         );
@@ -286,9 +290,7 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     );
   }
 
-  Widget _panel(double height) => Container(
-    height: height,
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+  Widget _panel(ScrollController scrollController) => Container(
     decoration: const BoxDecoration(
       color: petCream,
       borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
@@ -300,14 +302,21 @@ class _NearbyMapPageState extends State<NearbyMapPage>
         ),
       ],
     ),
-    child: Column(
+    child: ListView(
+      controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
       children: [
-        Container(
-          width: 44,
-          height: 5,
-          decoration: BoxDecoration(
-            color: accountBorder,
-            borderRadius: BorderRadius.circular(99),
+        Center(
+          child: Container(
+            width: 48,
+            height: 5,
+            decoration: BoxDecoration(
+              color: accountBorder,
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -334,54 +343,63 @@ class _NearbyMapPageState extends State<NearbyMapPage>
           ],
         ),
         const SizedBox(height: 8),
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _panelBody(),
-          ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _panelBody(),
         ),
       ],
     ),
   );
 
   Widget _panelBody() => switch (_state) {
-    _LoadState.loading => const _MapLoading(key: ValueKey('loading')),
-    _LoadState.noLocation => _MapMessage(
-      key: const ValueKey('location'),
-      icon: Icons.location_off_outlined,
-      message:
-          'Activa y permite la ubicación para mostrar alertas realmente cercanas.',
-      action: 'Usar mi ubicación',
-      onAction: () => _load(askPermission: true),
+    _LoadState.loading => const SizedBox(
+      height: 250,
+      child: _MapLoading(key: ValueKey('loading')),
     ),
-    _LoadState.error => _MapMessage(
-      key: const ValueKey('error'),
-      icon: Icons.cloud_off_outlined,
-      message: 'No pudimos actualizar el mapa en este momento.',
-      action: 'Reintentar',
-      onAction: () => _load(askPermission: false),
+    _LoadState.noLocation => SizedBox(
+      height: 210,
+      child: _MapMessage(
+        key: const ValueKey('location'),
+        icon: Icons.location_off_outlined,
+        message:
+            'Activa y permite la ubicación para mostrar alertas realmente cercanas.',
+        action: 'Usar mi ubicación',
+        onAction: () => _load(askPermission: true),
+      ),
     ),
-    _LoadState.ready when _items.isEmpty => const _MapMessage(
-      key: ValueKey('empty'),
-      icon: Icons.pets_outlined,
-      message: 'No hay alertas de este tipo cerca de ti.',
+    _LoadState.error => SizedBox(
+      height: 210,
+      child: _MapMessage(
+        key: const ValueKey('error'),
+        icon: Icons.cloud_off_outlined,
+        message: 'No pudimos actualizar el mapa en este momento.',
+        action: 'Reintentar',
+        onAction: () => _load(askPermission: false),
+      ),
     ),
-    _LoadState.ready => ListView.separated(
+    _LoadState.ready when _items.isEmpty => const SizedBox(
+      height: 210,
+      child: _MapMessage(
+        key: ValueKey('empty'),
+        icon: Icons.pets_outlined,
+        message: 'No hay alertas de este tipo cerca de ti.',
+      ),
+    ),
+    _LoadState.ready => Column(
       key: ValueKey(_filter),
-      physics: const BouncingScrollPhysics(),
-      itemCount: _items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, index) {
-        final item = _items[index];
-        return Reveal(
-          order: index,
-          child: _AlertCard(
-            item: item,
-            selected: _selected == _keyOf(item),
-            onTap: () => _select(item),
+      children: [
+        for (var index = 0; index < _items.length; index++) ...[
+          Reveal(
+            order: index,
+            child: _AlertCard(
+              item: _items[index],
+              selected: _selected == _keyOf(_items[index]),
+              onTap: () => _select(_items[index]),
+            ),
           ),
-        );
-      },
+          if (index != _items.length - 1) const SizedBox(height: 10),
+        ],
+      ],
     ),
   };
 }
@@ -572,17 +590,19 @@ class _MapLoading extends StatelessWidget {
   const _MapLoading({super.key});
   @override
   Widget build(BuildContext context) => Shimmer(
-    child: ListView.separated(
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, _) => Container(
-        height: 88,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-        ),
-      ),
+    child: Column(
+      children: [
+        for (var index = 0; index < 3; index++) ...[
+          Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+            ),
+          ),
+          if (index != 2) const SizedBox(height: 10),
+        ],
+      ],
     ),
   );
 }

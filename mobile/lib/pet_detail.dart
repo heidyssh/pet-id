@@ -68,7 +68,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
     try {
       final responses = await Future.wait([
         session.authRequest('GET', '/mascotas/$_id'),
-        session.authRequest('GET', '/historial/mascotas/$_id'),
+        session.authRequest('GET', '/historial-clinico/mascotas/$_id'),
       ]);
       final pet = Map<String, dynamic>.from(responses[0]['data'] as Map);
       final historyData = responses[1]['data'] as Map;
@@ -105,8 +105,29 @@ class _PetDetailPageState extends State<PetDetailPage> {
     setState(() => _pet = {..._pet, 'estado': 'perdido'});
     await _load();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Alerta de ${_pet['nombre']} enviada.')),
+    showPetToast(
+      context,
+      'Alerta de ${_pet['nombre']} enviada.',
+      type: PetToastType.success,
+    );
+  }
+
+  Future<void> _addClinicalRecord() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _HealthRecordSheet(petId: _id),
+    );
+    if (created != true || !mounted) return;
+    _changed = true;
+    await _load();
+    if (!mounted) return;
+    showPetToast(
+      context,
+      'Registro de salud guardado.',
+      type: PetToastType.success,
     );
   }
 
@@ -275,25 +296,22 @@ class _PetDetailPageState extends State<PetDetailPage> {
     ],
   );
 
-  Widget _facts() => Row(
-    children:
-        [
-              _Fact(label: 'Especie', value: _species(_pet)),
-              const SizedBox(width: 8),
-              _Fact(
-                label: 'Raza',
-                value: _pet['raza']?['nombre']?.toString() ?? 'Sin especificar',
-              ),
-              const SizedBox(width: 8),
-              _Fact(label: 'Edad', value: _age(_pet['fecha_nacimiento'])),
-              const SizedBox(width: 8),
-              _Fact(
-                label: 'Color',
-                value: '${_pet['color_principal'] ?? 'Sin dato'}',
-              ),
-            ]
-            .map((child) => child is SizedBox ? child : Expanded(child: child))
-            .toList(),
+  Widget _facts() => GridView.count(
+    crossAxisCount: 2,
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    mainAxisSpacing: 10,
+    crossAxisSpacing: 10,
+    childAspectRatio: 2.1,
+    children: [
+      _Fact(label: 'Especie', value: _species(_pet)),
+      _Fact(
+        label: 'Raza',
+        value: _pet['raza']?['nombre']?.toString() ?? 'Sin especificar',
+      ),
+      _Fact(label: 'Edad', value: _age(_pet['fecha_nacimiento'])),
+      _Fact(label: 'Color', value: '${_pet['color_principal'] ?? 'Sin dato'}'),
+    ],
   );
 
   Widget _marks() => Container(
@@ -333,7 +351,6 @@ class _PetDetailPageState extends State<PetDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             const Expanded(
               child: Text(
@@ -345,16 +362,18 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 ),
               ),
             ),
-            if (items.any((item) => item['organizacion'] != null))
-              const Text(
-                'Certificado por\nveterinaria',
-                textAlign: TextAlign.end,
-                style: TextStyle(
-                  color: accountMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+            OutlinedButton.icon(
+              onPressed: _addClinicalRecord,
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text('Registrar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: petDarkOrange,
+                side: const BorderSide(color: petOrange, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
               ),
+            ),
           ],
         ),
         const SizedBox(height: 13),
@@ -370,6 +389,234 @@ class _PetDetailPageState extends State<PetDetailPage> {
       ],
     );
   }
+}
+
+class _HealthRecordSheet extends StatefulWidget {
+  const _HealthRecordSheet({required this.petId});
+  final String petId;
+
+  @override
+  State<_HealthRecordSheet> createState() => _HealthRecordSheetState();
+}
+
+class _HealthRecordSheetState extends State<_HealthRecordSheet> {
+  final _form = GlobalKey<FormState>();
+  final _description = TextEditingController();
+  String _type = 'vacuna';
+  DateTime _applied = DateTime.now();
+  DateTime? _next;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickApplied() async {
+    final value = await showDatePicker(
+      context: context,
+      initialDate: _applied,
+      firstDate: DateTime(1990),
+      lastDate: DateTime.now(),
+      helpText: 'Fecha de aplicación',
+    );
+    if (value != null && mounted) {
+      setState(() {
+        _applied = value;
+        if (_next != null && _next!.isBefore(value)) _next = null;
+      });
+    }
+  }
+
+  Future<void> _pickNext() async {
+    final value = await showDatePicker(
+      context: context,
+      initialDate: _next ?? _applied.add(const Duration(days: 365)),
+      firstDate: _applied,
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      helpText: 'Próxima aplicación',
+    );
+    if (value != null && mounted) setState(() => _next = value);
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+    if (!_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<Session>().authRequest(
+        'POST',
+        '/historial-clinico/mascotas/${widget.petId}',
+        body: {
+          'tipo_registro': _type,
+          'descripcion': _description.text.trim(),
+          'fecha_aplicacion': _dateOnly(_applied),
+          'proxima_fecha': _next == null ? null : _dateOnly(_next!),
+        },
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error is ApiError
+              ? error.message
+              : 'No se pudo guardar el registro.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedPadding(
+    duration: const Duration(milliseconds: 220),
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .88,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Registrar vacuna o desparasitación',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Este registro será marcado como ingresado por el propietario.',
+                style: TextStyle(color: accountMuted, height: 1.35),
+              ),
+              const SizedBox(height: 18),
+              AccountField(
+                'Tipo de registro',
+                DropdownButtonFormField<String>(
+                  value: _type,
+                  decoration: accountInput('Tipo'),
+                  items: const [
+                    DropdownMenuItem(value: 'vacuna', child: Text('Vacuna')),
+                    DropdownMenuItem(
+                      value: 'desparasitacion',
+                      child: Text('Desparasitación'),
+                    ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (value) => setState(() => _type = value!),
+                ),
+              ),
+              AccountField(
+                _type == 'vacuna' ? 'Vacuna aplicada' : 'Producto aplicado',
+                TextFormField(
+                  controller: _description,
+                  enabled: !_busy,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLength: 200,
+                  decoration: accountInput(
+                    _type == 'vacuna'
+                        ? 'Ej. Antirrábica'
+                        : 'Ej. Desparasitante interno',
+                  ).copyWith(counterText: ''),
+                  validator: (value) => value == null || value.trim().length < 2
+                      ? 'Escribe qué se aplicó.'
+                      : null,
+                ),
+              ),
+              AccountField(
+                'Fecha de aplicación',
+                _DateField(value: _date(_applied), onTap: _pickApplied),
+              ),
+              AccountField(
+                'Próxima fecha (opcional)',
+                _DateField(
+                  value: _next == null ? 'Sin próxima fecha' : _date(_next!),
+                  muted: _next == null,
+                  onTap: _pickNext,
+                  onClear: _next == null
+                      ? null
+                      : () => setState(() => _next = null),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 4),
+                accountError(context, _error!),
+              ],
+              const SizedBox(height: 16),
+              AccountButton(
+                _busy ? 'Guardando...' : 'Guardar registro',
+                loading: _busy,
+                onPressed: _busy ? null : _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.value,
+    required this.onTap,
+    this.onClear,
+    this.muted = false,
+  });
+  final String value;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: InputDecorator(
+      decoration: accountInput('Fecha').copyWith(
+        prefixIcon: const Icon(Icons.calendar_month_outlined),
+        suffixIcon: onClear == null
+            ? const Icon(Icons.chevron_right_rounded)
+            : IconButton(
+                tooltip: 'Quitar fecha',
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded),
+              ),
+      ),
+      child: Text(
+        value,
+        style: TextStyle(color: muted ? accountMuted : petInk),
+      ),
+    ),
+  );
 }
 
 class _LostReportSheet extends StatefulWidget {
@@ -680,11 +927,12 @@ class _Fact extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 78),
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
+    constraints: const BoxConstraints(minHeight: 82),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: _box(),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(color: accountMuted, fontSize: 12)),
         const SizedBox(height: 4),
@@ -692,10 +940,9 @@ class _Fact extends StatelessWidget {
           value,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
           style: const TextStyle(
             color: petInk,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -710,6 +957,8 @@ class _ClinicalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deworming = item['tipo_registro'] == 'desparasitacion';
+    final organization = item['organizacion'] as Map?;
+    final applied = DateTime.tryParse('${item['fecha_aplicacion']}');
     final next = DateTime.tryParse('${item['proxima_fecha']}');
     final days = next?.difference(DateTime.now()).inDays;
     final expired = days != null && days < 0;
@@ -721,13 +970,13 @@ class _ClinicalCard extends StatelessWidget {
         : 'Al día';
     final statusColor = expired || soon ? const Color(0xFF966400) : _mintDark;
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(16),
       decoration: _box(),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               color: expired || soon ? const Color(0xFFFFD36B) : _mint,
               borderRadius: BorderRadius.circular(14),
@@ -754,6 +1003,19 @@ class _ClinicalCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: accountMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  organization == null
+                      ? 'Registrada por ti${applied == null ? '' : ' · ${_date(applied)}'}'
+                      : 'Veterinaria: ${organization['nombre'] ?? 'Certificada'}${applied == null ? '' : ' · ${_date(applied)}'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: organization == null ? accountMuted : _mintDark,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (next != null)
                   Text(
@@ -884,3 +1146,6 @@ String _age(Object? value) {
 
 String _date(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+String _dateOnly(DateTime date) =>
+    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

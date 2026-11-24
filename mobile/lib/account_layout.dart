@@ -9,6 +9,104 @@ import 'welcome.dart';
 const accountBorder = Color(0xFFFDE1D1);
 const accountMuted = Color(0xFF5D686C);
 
+enum PetToastType { success, error, warning, info }
+
+OverlayEntry? _activePetToast;
+
+void showPetToast(
+  BuildContext context,
+  String message, {
+  PetToastType type = PetToastType.info,
+}) {
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) return;
+  if (_activePetToast?.mounted ?? false) _activePetToast!.remove();
+  final (color, icon) = switch (type) {
+    PetToastType.success => (
+      const Color(0xFF08735F),
+      Icons.check_circle_rounded,
+    ),
+    PetToastType.error => (const Color(0xFFB42318), Icons.error_rounded),
+    PetToastType.warning => (
+      const Color(0xFF8A5A00),
+      Icons.warning_amber_rounded,
+    ),
+    PetToastType.info => (const Color(0xFF2E5F87), Icons.info_rounded),
+  };
+  late final OverlayEntry entry;
+  void dismiss() {
+    if (entry.mounted) entry.remove();
+    if (identical(_activePetToast, entry)) _activePetToast = null;
+  }
+
+  entry = OverlayEntry(
+    builder: (context) => Positioned(
+      top: MediaQuery.paddingOf(context).top + 12,
+      left: 18,
+      right: 18,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutBack,
+        builder: (_, value, child) => Transform.translate(
+          offset: Offset(0, -18 * (1 - value)),
+          child: Opacity(opacity: value.clamp(0, 1), child: child),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Semantics(
+            liveRegion: true,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x33000000),
+                    blurRadius: 18,
+                    offset: Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, color: Colors.white, size: 23),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: dismiss,
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  _activePetToast = entry;
+  overlay.insert(entry);
+  Future<void>.delayed(const Duration(seconds: 4), () {
+    dismiss();
+  });
+}
+
 class AccountLayout extends StatelessWidget {
   const AccountLayout({
     super.key,
@@ -34,7 +132,12 @@ class AccountLayout extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, viewport) => SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                28 + MediaQuery.viewInsetsOf(context).bottom,
+              ),
               child: Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(

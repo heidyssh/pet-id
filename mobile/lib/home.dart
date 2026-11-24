@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'account_layout.dart';
 import 'api.dart';
 import 'entry_forms.dart';
+import 'lost_report.dart';
 import 'motion.dart';
 import 'nearby_map.dart';
 import 'pet_detail.dart';
@@ -126,14 +127,6 @@ class _CitizenHomeState extends State<CitizenHome> {
     }
   }
 
-  void _soon(String feature) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('$feature estará disponible pronto.')),
-      );
-  }
-
   Future<void> _openSighting() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -158,6 +151,107 @@ class _CitizenHomeState extends State<CitizenHome> {
     if (created == true && mounted) unawaited(_loadPets());
   }
 
+  Future<void> _openLostPetReport() async {
+    if (_petsLoading) await _loadPets();
+    if (!mounted) return;
+    final available = _pets.where((pet) => pet['estado'] != 'perdido').toList();
+    if (available.isEmpty) {
+      showPetToast(
+        context,
+        _pets.isEmpty
+            ? 'Primero registra una mascota para poder reportarla.'
+            : 'Todas tus mascotas ya tienen una alerta activa.',
+        type: PetToastType.warning,
+      );
+      return;
+    }
+
+    Map<String, dynamic>? selected;
+    if (available.length == 1) {
+      selected = available.first;
+    } else {
+      selected = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        backgroundColor: petCream,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  '¿Qué mascota se perdió?',
+                  style: TextStyle(
+                    color: petInk,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Selecciona la mascota para crear la alerta.',
+                  style: TextStyle(color: accountMuted),
+                ),
+                const SizedBox(height: 15),
+                for (final pet in available)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 9),
+                    child: ListTile(
+                      onTap: () => Navigator.of(sheetContext).pop(pet),
+                      tileColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        side: const BorderSide(color: accountBorder, width: 2),
+                      ),
+                      leading: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: _peach,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.pets_rounded,
+                          color: petDarkOrange,
+                        ),
+                      ),
+                      title: Text(
+                        '${pet['nombre'] ?? 'Mascota'}',
+                        style: const TextStyle(
+                          color: petInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      subtitle: Text(_speciesLabel(pet)),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    if (selected == null || !mounted) return;
+    final pet = selected;
+    final created = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => LostReportPage(pet: pet)));
+    if (created == true && mounted) {
+      showPetToast(
+        context,
+        'Alerta de ${pet['nombre']} enviada a tu zona.',
+        type: PetToastType.success,
+      );
+      unawaited(_refresh());
+    }
+  }
+
   Future<void> _openNotifications() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -177,7 +271,13 @@ class _CitizenHomeState extends State<CitizenHome> {
       _homePage(),
       const NearbyMapPage(),
       _petsPage(),
-      _ProfilePage(name: widget.name),
+      _ProfilePage(
+        pets: _pets,
+        petsLoading: _petsLoading,
+        onOpenPet: _openPet,
+        onAddPet: _openPetRegistration,
+        onViewPets: () => setState(() => _tab = 2),
+      ),
     ];
     return Scaffold(
       backgroundColor: petCream,
@@ -218,12 +318,7 @@ class _CitizenHomeState extends State<CitizenHome> {
       children: [
         Reveal(child: _header()),
         const SizedBox(height: 22),
-        Reveal(
-          order: 1,
-          child: _LostPetCard(
-            onTap: () => _soon('El reporte de mascota perdida'),
-          ),
-        ),
+        Reveal(order: 1, child: _LostPetCard(onTap: _openLostPetReport)),
         const SizedBox(height: 14),
         Reveal(
           order: 2,
@@ -288,6 +383,11 @@ class _CitizenHomeState extends State<CitizenHome> {
   );
 
   Widget _header() {
+    final currentUser = context.watch<Session>().user ?? const {};
+    final currentName = [
+      currentUser['nombre'],
+      currentUser['apellido'],
+    ].whereType<String>().where((value) => value.isNotEmpty).join(' ');
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Buenos días,'
@@ -317,7 +417,9 @@ class _CitizenHomeState extends State<CitizenHome> {
               ),
               const SizedBox(height: 2),
               Text(
-                widget.name.isEmpty ? 'Bienvenido' : widget.name,
+                currentName.isEmpty
+                    ? (widget.name.isEmpty ? 'Bienvenido' : widget.name)
+                    : currentName,
                 style: const TextStyle(
                   color: petInk,
                   fontSize: 28,
@@ -407,41 +509,60 @@ class _CitizenHomeState extends State<CitizenHome> {
     child: ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        const Text(
-          'Mis mascotas',
-          style: TextStyle(
-            color: petInk,
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-          ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Mis mascotas',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: _openPetRegistration,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Registrar'),
+              style: FilledButton.styleFrom(
+                backgroundColor: petOrange,
+                foregroundColor: petInk,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        const Text(
+          'Consulta sus fichas, vacunas y alertas.',
+          style: TextStyle(color: accountMuted),
+        ),
+        const SizedBox(height: 18),
         if (_petsLoading && _pets.isEmpty)
           const _LoadingCard()
         else if (_pets.isEmpty)
           _MessageCard(
             text: _petsError ?? 'Todavía no registras mascotas.',
-            action: _petsError == null ? null : 'Reintentar',
-            onAction: _petsError == null ? null : _loadPets,
+            action: _petsError == null ? 'Registrar' : 'Reintentar',
+            onAction: _petsError == null ? _openPetRegistration : _loadPets,
           )
         else
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 0.95,
+          Column(
             children: [
-              for (var i = 0; i < _pets.length; i++)
+              for (var i = 0; i < _pets.length; i++) ...[
                 Reveal(
                   order: i,
-                  child: _PetCard(
+                  child: _PetListCard(
                     pet: _pets[i],
                     index: i,
                     onTap: () => _openPet(_pets[i]),
                   ),
                 ),
+                if (i != _pets.length - 1) const SizedBox(height: 12),
+              ],
             ],
           ),
       ],
@@ -766,6 +887,116 @@ class _SectionTitle extends StatelessWidget {
       ),
     ],
   );
+}
+
+class _PetListCard extends StatelessWidget {
+  const _PetListCard({
+    required this.pet,
+    required this.index,
+    required this.onTap,
+  });
+  final Map<String, dynamic> pet;
+  final int index;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, foreground) = index.isEven
+        ? (_peach, petOrange)
+        : (_lilac, _purple);
+    final photo = context.read<PetIdApi>().imageUrl(_photoOf(pet));
+    final lost = pet['estado'] == 'perdido';
+    return Pressable(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Ink(
+            padding: const EdgeInsets.all(13),
+            decoration: _cardDecoration(),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: SizedBox.square(
+                    dimension: 82,
+                    child: ColoredBox(
+                      color: background,
+                      child: photo == null
+                          ? Icon(
+                              Icons.pets_rounded,
+                              color: foreground,
+                              size: 35,
+                            )
+                          : Image.network(
+                              photo,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Icon(
+                                Icons.pets_rounded,
+                                color: foreground,
+                                size: 35,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${pet['nombre'] ?? 'Mascota'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: petInk,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _speciesLabel(pet),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: accountMuted),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: lost
+                              ? const Color(0xFFFFE3EC)
+                              : const Color(0xFFDDF5EE),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          lost ? 'Perdida' : 'En casa',
+                          style: TextStyle(
+                            color: lost
+                                ? const Color(0xFFB71952)
+                                : const Color(0xFF08735F),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: accountMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PetCard extends StatelessWidget {
@@ -1147,8 +1378,18 @@ class _BottomBar extends StatelessWidget {
 }
 
 class _ProfilePage extends StatefulWidget {
-  const _ProfilePage({required this.name});
-  final String name;
+  const _ProfilePage({
+    required this.pets,
+    required this.petsLoading,
+    required this.onOpenPet,
+    required this.onAddPet,
+    required this.onViewPets,
+  });
+  final List<Map<String, dynamic>> pets;
+  final bool petsLoading;
+  final ValueChanged<Map<String, dynamic>> onOpenPet;
+  final VoidCallback onAddPet;
+  final VoidCallback onViewPets;
 
   @override
   State<_ProfilePage> createState() => _ProfilePageState();
@@ -1156,6 +1397,262 @@ class _ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<_ProfilePage> {
   bool _loggingOut = false;
+  bool _loading = true;
+  bool _locationBusy = false;
+  bool _alertsEnabled = false;
+  int _reports = 0;
+  int _sightings = 0;
+  double _radiusKm = 2;
+  String _locationLabel = 'Sin ubicación configurada';
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final session = context.read<Session>();
+      final responses = await Future.wait([
+        session.authRequest('GET', '/extravios/mios?limite=1'),
+        session.authRequest('GET', '/avistamientos/mios?limite=1'),
+        session.authRequest('GET', '/notificaciones/ubicacion-alertas'),
+      ]);
+      if (!mounted) return;
+      final reports = responses[0]['data'] as Map;
+      final sightings = responses[1]['data'] as Map;
+      final location = responses[2]['data'] as Map;
+      final point = location['ubicacion'] as Map?;
+      setState(() {
+        _reports = (reports['paginacion']?['total'] as num?)?.toInt() ?? 0;
+        _sightings = (sightings['paginacion']?['total'] as num?)?.toInt() ?? 0;
+        _alertsEnabled = location['activa'] == true;
+        _radiusKm = (location['radio_km'] as num?)?.toDouble() ?? 2;
+        _locationLabel = point == null
+            ? 'Sin ubicación configurada'
+            : 'Ubicación guardada · radio ${_radiusKm.toStringAsFixed(0)} km';
+      });
+      if (point != null) await _resolveLocation(point);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'No pudimos actualizar tu perfil.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _resolveLocation(Map point) async {
+    try {
+      final lat = point['latitud'];
+      final lon = point['longitud'];
+      final data =
+          (await context.read<PetIdApi>().request(
+                'GET',
+                '/mapas/geocodificar-reversa?latitud=$lat&longitud=$lon',
+              ))['data']
+              as Map?;
+      final items = _list(data?['items']);
+      if (mounted && items.isNotEmpty) {
+        setState(() => _locationLabel = '${items.first['direccion']}');
+      }
+    } catch (_) {
+      // La suscripción sigue activa aunque no haya nombre para la dirección.
+    }
+  }
+
+  Future<void> _setAlerts(bool enabled) async {
+    if (_locationBusy) return;
+    setState(() => _locationBusy = true);
+    try {
+      final session = context.read<Session>();
+      if (!enabled) {
+        await session.authRequest(
+          'DELETE',
+          '/notificaciones/ubicacion-alertas',
+        );
+        if (mounted) {
+          setState(() {
+            _alertsEnabled = false;
+            _locationLabel = 'Alertas de ubicación desactivadas';
+          });
+        }
+        return;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const ApiError('Activa la ubicación del celular.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw const ApiError('Permite la ubicación para activar las alertas.');
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      await session.authRequest(
+        'PUT',
+        '/notificaciones/ubicacion-alertas',
+        body: {
+          'ubicacion': {
+            'latitud': position.latitude,
+            'longitud': position.longitude,
+          },
+          'radio_km': _radiusKm,
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _alertsEnabled = true;
+        _locationLabel =
+            'Ubicación guardada · radio ${_radiusKm.toStringAsFixed(0)} km';
+      });
+      await _resolveLocation({
+        'latitud': position.latitude,
+        'longitud': position.longitude,
+      });
+      if (mounted) {
+        showPetToast(
+          context,
+          'Alertas de tu zona actualizadas.',
+          type: PetToastType.success,
+        );
+      }
+    } on ApiError catch (error) {
+      if (mounted) {
+        showPetToast(context, error.message, type: PetToastType.warning);
+      }
+    } catch (_) {
+      if (mounted) {
+        showPetToast(
+          context,
+          'No pudimos obtener tu ubicación.',
+          type: PetToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _locationBusy = false);
+    }
+  }
+
+  Future<void> _editProfile() async {
+    final updated = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _EditProfileSheet(),
+    );
+    if (updated == true && mounted) {
+      showPetToast(context, 'Perfil actualizado.', type: PetToastType.success);
+    }
+  }
+
+  void _privacy() {
+    final user = context.read<Session>().user ?? const {};
+    _showProfileSheet(
+      title: 'Privacidad y contacto',
+      child: Column(
+        children: [
+          _InfoRow(
+            icon: Icons.email_outlined,
+            title: 'Correo electrónico',
+            subtitle: '${user['correo'] ?? 'Sin correo'}',
+          ),
+          _InfoRow(
+            icon: Icons.phone_outlined,
+            title: 'Teléfono de contacto',
+            subtitle: '${user['telefono'] ?? 'Sin teléfono'}',
+          ),
+          const _InfoRow(
+            icon: Icons.visibility_outlined,
+            title: 'Visibilidad',
+            subtitle:
+                'Tu teléfono no se muestra públicamente; PetID lo usa para contacto seguro.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _help() {
+    _showProfileSheet(
+      title: 'Ayuda y soporte',
+      child: const Column(
+        children: [
+          ExpansionTile(
+            title: Text('¿Cómo reporto una mascota perdida?'),
+            children: [
+              Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  'Abre su ficha, pulsa “Reportar como perdida” y confirma el lugar y el radio de alerta.',
+                ),
+              ),
+            ],
+          ),
+          ExpansionTile(
+            title: Text('¿El reconocimiento confirma la identidad?'),
+            children: [
+              Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  'No. PetID muestra coincidencias visuales y el propietario siempre debe confirmarlas.',
+                ),
+              ),
+            ],
+          ),
+          _InfoRow(
+            icon: Icons.support_agent_rounded,
+            title: 'Soporte PetID',
+            subtitle: 'soporte@petid.app',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProfileSheet({required String title, required Widget child}) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: petCream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: petInk,
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _logout() async {
     setState(() => _loggingOut = true);
@@ -1177,66 +1674,625 @@ class _ProfilePageState extends State<_ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<Session>().user ?? const {};
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      children: [
-        const Text(
-          'Perfil',
-          style: TextStyle(
-            color: petInk,
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-          ),
+    final fullName = [
+      user['nombre'],
+      user['apellido'],
+    ].whereType<String>().where((value) => value.isNotEmpty).join(' ');
+    final initials = [user['nombre'], user['apellido']]
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .map((value) => value[0])
+        .take(2)
+        .join();
+    return RefreshIndicator(
+      color: petOrange,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: _cardDecoration(),
-          child: Row(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        children: [
+          Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: _peach,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.person_rounded,
-                  color: petOrange,
-                  size: 30,
+              const Expanded(
+                child: Text(
+                  'Mi perfil',
+                  style: TextStyle(
+                    color: petInk,
+                    fontSize: 27,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.name,
-                      style: const TextStyle(
-                        color: petInk,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (user['correo'] case final String email)
-                      Text(email, style: const TextStyle(color: accountMuted)),
-                  ],
+              OutlinedButton.icon(
+                onPressed: _editProfile,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Editar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: petDarkOrange,
+                  side: const BorderSide(color: accountBorder, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 20),
-        AccountButton(
-          _loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión',
-          loading: _loggingOut,
-          onPressed: _loggingOut ? null : _logout,
-        ),
-      ],
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDecoration(),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFA05E), petOrange],
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Text(
+                        initials.isEmpty ? 'P' : initials.toUpperCase(),
+                        style: const TextStyle(
+                          color: petInk,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName.isEmpty ? 'Usuario PetID' : fullName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: petInk,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${user['correo'] ?? ''}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: accountMuted),
+                          ),
+                          const SizedBox(height: 7),
+                          const _RoleBadge(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ProfileStat('${widget.pets.length}', 'Mascotas'),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: _ProfileStat('$_reports', 'Reportes')),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ProfileStat('$_sightings', 'Avistamientos'),
+                    ),
+                  ],
+                ),
+                if (_loading) ...[
+                  const SizedBox(height: 12),
+                  const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: petOrange,
+                    backgroundColor: accountBorder,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            _MessageCard(text: _error!, action: 'Reintentar', onAction: _load),
+          ],
+          const SizedBox(height: 22),
+          _SectionTitle(
+            'Mis mascotas',
+            action: 'Ver todas',
+            onAction: widget.onViewPets,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.pets.take(2).length + 1,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, index) {
+                if (index == widget.pets.take(2).length) {
+                  return _ProfileAddPet(onTap: widget.onAddPet);
+                }
+                final pet = widget.pets[index];
+                return _ProfilePet(
+                  pet: pet,
+                  onTap: () => widget.onOpenPet(pet),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Ajustes',
+            style: TextStyle(
+              color: petInk,
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: _cardDecoration(),
+            child: Column(
+              children: [
+                _ProfileSetting(
+                  icon: Icons.notifications_none_rounded,
+                  color: _yellow,
+                  title: 'Alertas de mi zona',
+                  subtitle: _alertsEnabled
+                      ? 'Pérdidas a menos de ${_radiusKm.toStringAsFixed(0)} km'
+                      : 'Desactivadas',
+                  trailing: Switch.adaptive(
+                    value: _alertsEnabled,
+                    onChanged: _locationBusy ? null : _setAlerts,
+                    activeTrackColor: const Color(0xFF12CFA5),
+                  ),
+                ),
+                _ProfileSetting(
+                  icon: Icons.location_on_outlined,
+                  color: _peach,
+                  title: 'Mi ubicación',
+                  subtitle: _locationBusy
+                      ? 'Actualizando ubicación...'
+                      : _locationLabel,
+                  onTap: _locationBusy ? null : () => _setAlerts(true),
+                ),
+                _ProfileSetting(
+                  icon: Icons.lock_outline_rounded,
+                  color: _lilac,
+                  title: 'Privacidad y contacto',
+                  subtitle: 'Revisa tus datos y su visibilidad',
+                  onTap: _privacy,
+                ),
+                _ProfileSetting(
+                  icon: Icons.help_outline_rounded,
+                  color: const Color(0xFFCFF5EA),
+                  title: 'Ayuda y soporte',
+                  subtitle: 'Preguntas frecuentes y contacto',
+                  onTap: _help,
+                  last: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          OutlinedButton.icon(
+            onPressed: _loggingOut ? null : _logout,
+            icon: const Icon(Icons.logout_rounded),
+            label: Text(_loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+              foregroundColor: const Color(0xFFB71952),
+              side: const BorderSide(color: Color(0xFFFFB4CB), width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: const Color(0xFFDDF5EE),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: const Color(0xFF6EDFC8)),
+    ),
+    child: const Text(
+      'Cuenta ciudadana',
+      style: TextStyle(
+        color: Color(0xFF08735F),
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
+class _ProfileStat extends StatelessWidget {
+  const _ProfileStat(this.value, this.label);
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF2EA),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: petInk,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: accountMuted, fontSize: 11),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfilePet extends StatelessWidget {
+  const _ProfilePet({required this.pet, required this.onTap});
+  final Map<String, dynamic> pet;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = context.read<PetIdApi>().imageUrl(_photoOf(pet));
+    final lost = pet['estado'] == 'perdido';
+    return SizedBox(
+      width: 142,
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: accountBorder, width: 2),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(13),
+                  child: SizedBox.square(
+                    dimension: 46,
+                    child: ColoredBox(
+                      color: _peach,
+                      child: photo == null
+                          ? const Icon(Icons.pets_rounded, color: petDarkOrange)
+                          : Image.network(photo, fit: BoxFit.cover),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${pet['nombre'] ?? 'Mascota'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: petInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        lost ? 'Perdida' : 'En casa',
+                        style: TextStyle(
+                          color: lost ? _pinkDark : const Color(0xFF08735F),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileAddPet extends StatelessWidget {
+  const _ProfileAddPet({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 62,
+    child: Material(
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(
+          color: Color(0xFFFFBE99),
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: const Icon(Icons.add_rounded, color: petDarkOrange, size: 30),
+      ),
+    ),
+  );
+}
+
+class _ProfileSetting extends StatelessWidget {
+  const _ProfileSetting({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.trailing,
+    this.last = false,
+  });
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      ListTile(
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(icon, color: petInk),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(color: petInk, fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: accountMuted, fontSize: 12),
+        ),
+        trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
+      ),
+      if (!last)
+        const Divider(
+          height: 1,
+          indent: 68,
+          endIndent: 14,
+          color: accountBorder,
+        ),
+    ],
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: CircleAvatar(
+      backgroundColor: const Color(0xFFFFEBDD),
+      foregroundColor: petDarkOrange,
+      child: Icon(icon),
+    ),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Text(subtitle),
+  );
+}
+
+class _EditProfileSheet extends StatefulWidget {
+  const _EditProfileSheet();
+
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  final _form = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _surname;
+  late final TextEditingController _phone;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<Session>().user ?? const {};
+    _name = TextEditingController(text: '${user['nombre'] ?? ''}');
+    _surname = TextEditingController(text: '${user['apellido'] ?? ''}');
+    _phone = TextEditingController(text: '${user['telefono'] ?? ''}');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _surname.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  String? _validateName(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.length < 2) return 'Escribe al menos dos letras.';
+    if (RegExp(r'[0-9]').hasMatch(text)) {
+      return 'El nombre no debe tener números.';
+    }
+    return null;
+  }
+
+  Future<void> _save() async {
+    FocusScope.of(context).unfocus();
+    if (!_form.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<Session>().updateProfile({
+        'nombre': _name.text.trim(),
+        'apellido': _surname.text.trim(),
+        'telefono': _phone.text.replaceAll(RegExp(r'[\s-]'), ''),
+      });
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error is ApiError
+              ? error.message
+              : 'No se pudo actualizar el perfil.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedPadding(
+    duration: const Duration(milliseconds: 220),
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Form(
+        key: _form,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Editar perfil',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 18),
+              AccountField(
+                'Nombres',
+                TextFormField(
+                  controller: _name,
+                  enabled: !_busy,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: accountInput('Nombres'),
+                  validator: _validateName,
+                ),
+              ),
+              AccountField(
+                'Apellidos',
+                TextFormField(
+                  controller: _surname,
+                  enabled: !_busy,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: accountInput('Apellidos'),
+                  validator: _validateName,
+                ),
+              ),
+              AccountField(
+                'Teléfono',
+                TextFormField(
+                  controller: _phone,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.phone,
+                  decoration: accountInput('+504 0000-0000'),
+                  validator: (value) {
+                    final compact = (value ?? '').replaceAll(
+                      RegExp(r'[\s-]'),
+                      '',
+                    );
+                    return RegExp(
+                          r'^(?:\+504)?[2389][0-9]{7}$',
+                        ).hasMatch(compact)
+                        ? null
+                        : 'Escribe un teléfono válido de Honduras.';
+                  },
+                ),
+              ),
+              if (_error != null) accountError(context, _error!),
+              const SizedBox(height: 14),
+              AccountButton(
+                _busy ? 'Guardando...' : 'Guardar cambios',
+                loading: _busy,
+                onPressed: _busy ? null : _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _NotificationsSheet extends StatefulWidget {

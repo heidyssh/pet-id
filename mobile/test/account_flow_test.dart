@@ -69,7 +69,8 @@ void main() {
     await type(tester, inputs.at(1), 'Pérez López');
     await type(tester, inputs.at(2), 'Refugio PetID');
     await type(tester, inputs.at(3), '9876-5432');
-    await type(tester, inputs.at(5), 'PetId123');
+    await type(tester, inputs.at(5), 'PetId123!');
+    await type(tester, inputs.at(6), 'PetId123!');
     await press(tester, find.text('Crear cuenta'));
 
     expect(registration?.url.path, '/api/auth/registro');
@@ -78,7 +79,7 @@ void main() {
       'apellido': 'Pérez López',
       'telefono': '+50498765432',
       'correo': 'prueba@example.com',
-      'password': 'PetId123',
+      'password': 'PetId123!',
       'organizacion': {
         'nombre': 'Refugio PetID',
         'tipo': 'refugio',
@@ -86,6 +87,7 @@ void main() {
       },
     });
     expect(find.text('¡Hola de nuevo!'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
     expect(tester.takeException(), isNull);
   });
 
@@ -108,7 +110,7 @@ void main() {
       inputs.first,
       'https://petid.example/cambio#token=$token',
     );
-    await type(tester, inputs.last, 'Clave123');
+    await type(tester, inputs.last, 'Clave123!');
     await press(tester, find.text('Guardar contraseña'));
     expect(requests.map((request) => request.url.path), [
       '/api/auth/recuperar-contrasena',
@@ -117,7 +119,7 @@ void main() {
     expect(jsonDecode(requests.first.body), {'correo': 'prueba@example.com'});
     expect(jsonDecode(requests.last.body), {
       'token': token,
-      'password': 'Clave123',
+      'password': 'Clave123!',
     });
     expect(find.text('¡Hola de nuevo!'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -138,7 +140,8 @@ void main() {
     final surname = 'É' * 30;
     await type(tester, inputs.at(0), '${name}abc');
     await type(tester, inputs.at(1), '${surname}xyz');
-    await type(tester, inputs.at(4), 'PetId123');
+    await type(tester, inputs.at(4), 'PetId123!');
+    await type(tester, inputs.at(5), 'PetId123!');
     await press(tester, find.text('Crear cuenta'));
     expect(find.text('Escribe tu teléfono.'), findsOneWidget);
     expect(registration, isNull);
@@ -167,5 +170,6 @@ void main() {
     expect(body['nombre'], name);
     expect(body['apellido'], surname);
     expect(body['telefono'], '+50481234567');
+    await tester.pump(const Duration(seconds: 5));
   });
 }

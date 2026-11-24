@@ -3,6 +3,7 @@ import {
   registrarUsuario,
   iniciarSesion,
   obtenerPerfil,
+  actualizarPerfil,
 } from '../services/auth.service.js';
 import {
   solicitarVerificacion,
@@ -56,6 +57,16 @@ export const me = asyncHandler(async (req, res) => {
 
   return res.status(200).json({
     success: true,
+    data: usuario,
+  });
+});
+
+export const actualizarMe = asyncHandler(async (req, res) => {
+  const usuario = await actualizarPerfil(req.usuario.id_usuario, req.body);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({
+    success: true,
+    message: 'Perfil actualizado correctamente',
     data: usuario,
   });
 });

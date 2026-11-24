@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -28,8 +30,9 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
   int _step = 0;
   int? _speciesId;
   String? _breedId;
-  String _sex = 'hembra';
-  String _size = 'mediano';
+  bool _breedChosen = false;
+  String? _sex;
+  String? _size;
   DateTime? _birthDate;
   Object? _createdId;
   bool _loadingCatalog = true;
@@ -67,11 +70,7 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
       if (!mounted) return;
       setState(() {
         _species = items;
-        _speciesId = items.isEmpty
-            ? null
-            : (items.first['id_especie'] as num).toInt();
       });
-      await _loadBreeds();
     } catch (error) {
       if (mounted) setState(() => _error = _message(error));
     } finally {
@@ -91,11 +90,130 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
         setState(() {
           _breeds = _maps(response['data']);
           _breedId = null;
+          _breedChosen = false;
         });
       }
     } catch (error) {
       if (mounted) setState(() => _error = _message(error));
     }
+  }
+
+  Future<void> _selectBreed() async {
+    if (_speciesId == null || _loadingCatalog) return;
+    final search = TextEditingController();
+    var query = '';
+    final selected = await showModalBottomSheet<_BreedOption>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: petCream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final options =
+              [
+                const _BreedOption(null, 'Mestiza / sin especificar'),
+                ..._breeds.map(
+                  (item) =>
+                      _BreedOption('${item['id_raza']}', '${item['nombre']}'),
+                ),
+              ].where((option) {
+                return query.isEmpty ||
+                    option.name.toLowerCase().contains(query.toLowerCase());
+              }).toList();
+          return FractionallySizedBox(
+            heightFactor: .78,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: accountBorder,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Selecciona la raza',
+                    style: TextStyle(
+                      color: petInk,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: search,
+                    autofocus: true,
+                    decoration: accountInput(
+                      'Buscar raza',
+                    ).copyWith(prefixIcon: const Icon(Icons.search_rounded)),
+                    onChanged: (value) =>
+                        setSheetState(() => query = value.trim()),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: options.isEmpty
+                        ? const Center(child: Text('No encontramos esa raza.'))
+                        : ListView.separated(
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            itemCount: options.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, index) {
+                              final option = options[index];
+                              final active =
+                                  _breedChosen && option.id == _breedId;
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                title: Text(option.name),
+                                trailing: active
+                                    ? const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Color(0xFF00A985),
+                                      )
+                                    : null,
+                                onTap: () =>
+                                    Navigator.pop(sheetContext, option),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    search.dispose();
+    if (selected != null && mounted) {
+      setState(() {
+        _breedId = selected.id;
+        _breedChosen = true;
+      });
+    }
+  }
+
+  void _removePhoto(int index) {
+    if (_busy) return;
+    setState(() {
+      _photos[index] = null;
+      _uploaded.remove(index);
+      _error = null;
+    });
   }
 
   Future<void> _choosePhoto(int index) async {
@@ -212,10 +330,10 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
         if (mounted) setState(() {});
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('¡${_name.text.trim()} ya forma parte de PetID!'),
-        ),
+      showPetToast(
+        context,
+        '¡${_name.text.trim()} ya forma parte de PetID!',
+        type: PetToastType.success,
       );
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -366,7 +484,8 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                 'Especie',
                 DropdownButtonFormField<int>(
                   value: _speciesId,
-                  decoration: accountInput('Especie'),
+                  hint: const Text('Seleccionar'),
+                  decoration: accountInput('Seleccionar'),
                   items: _species
                       .map(
                         (item) => DropdownMenuItem(
@@ -378,9 +497,16 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                   onChanged: _loadingCatalog
                       ? null
                       : (value) {
-                          setState(() => _speciesId = value);
+                          setState(() {
+                            _speciesId = value;
+                            _breedId = null;
+                            _breedChosen = false;
+                            _breeds = const [];
+                          });
                           _loadBreeds();
                         },
+                  validator: (value) =>
+                      value == null ? 'Selecciona la especie.' : null,
                 ),
               ),
             ),
@@ -390,12 +516,15 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                 'Sexo',
                 DropdownButtonFormField<String>(
                   value: _sex,
-                  decoration: accountInput('Sexo'),
+                  hint: const Text('Seleccionar'),
+                  decoration: accountInput('Seleccionar'),
                   items: const [
                     DropdownMenuItem(value: 'hembra', child: Text('Hembra')),
                     DropdownMenuItem(value: 'macho', child: Text('Macho')),
                   ],
-                  onChanged: (value) => setState(() => _sex = value!),
+                  onChanged: (value) => setState(() => _sex = value),
+                  validator: (value) =>
+                      value == null ? 'Selecciona el sexo.' : null,
                 ),
               ),
             ),
@@ -403,23 +532,28 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
         ),
         AccountField(
           'Raza',
-          DropdownButtonFormField<String?>(
-            value: _breedId,
-            isExpanded: true,
-            decoration: accountInput('Selecciona la raza'),
-            items: [
-              const DropdownMenuItem<String?>(
-                value: null,
-                child: Text('Mestiza / sin especificar'),
-              ),
-              ..._breeds.map(
-                (item) => DropdownMenuItem<String?>(
-                  value: '${item['id_raza']}',
-                  child: Text('${item['nombre']}'),
+          InkWell(
+            onTap: _speciesId == null ? null : _selectBreed,
+            borderRadius: BorderRadius.circular(16),
+            child: InputDecorator(
+              decoration: accountInput('Seleccionar raza').copyWith(
+                suffixIcon: Icon(
+                  _speciesId == null
+                      ? Icons.lock_outline_rounded
+                      : Icons.keyboard_arrow_down_rounded,
                 ),
               ),
-            ],
-            onChanged: (value) => setState(() => _breedId = value),
+              child: Text(
+                _breedChosen
+                    ? _breedName()
+                    : _speciesId == null
+                    ? 'Selecciona primero la especie'
+                    : 'Seleccionar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: _breedChosen ? petInk : accountMuted),
+              ),
+            ),
           ),
         ),
         Row(
@@ -442,13 +576,16 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                 'Tamaño',
                 DropdownButtonFormField<String>(
                   value: _size,
-                  decoration: accountInput('Tamaño'),
+                  hint: const Text('Seleccionar'),
+                  decoration: accountInput('Seleccionar'),
                   items: const [
                     DropdownMenuItem(value: 'pequeno', child: Text('Pequeño')),
                     DropdownMenuItem(value: 'mediano', child: Text('Mediano')),
                     DropdownMenuItem(value: 'grande', child: Text('Grande')),
                   ],
-                  onChanged: (value) => setState(() => _size = value!),
+                  onChanged: (value) => setState(() => _size = value),
+                  validator: (value) =>
+                      value == null ? 'Selecciona el tamaño.' : null,
                 ),
               ),
             ),
@@ -528,6 +665,7 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                 label: _photoLabels[index],
                 photo: _photos[index],
                 onTap: () => _choosePhoto(index),
+                onRemove: () => _removePhoto(index),
               ),
             ),
           ],
@@ -557,6 +695,29 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
         style: TextStyle(color: accountMuted, height: 1.4),
       ),
       const SizedBox(height: 18),
+      const Text(
+        'Fotos para reconocimiento',
+        style: TextStyle(
+          color: petInk,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      const SizedBox(height: 10),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _photos.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.25,
+        ),
+        itemBuilder: (_, index) =>
+            _ReviewPhoto(photo: _photos[index]!, label: _photoLabels[index]),
+      ),
+      const SizedBox(height: 18),
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -580,6 +741,47 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
               '${_speciesName()} · ${_color.text.trim()} · ${_sizeLabel()}',
               style: const TextStyle(color: accountMuted),
             ),
+            const SizedBox(height: 16),
+            _ReviewPair(
+              firstLabel: 'Especie',
+              firstValue: _speciesName(),
+              secondLabel: 'Sexo',
+              secondValue: _sexLabel(),
+            ),
+            const SizedBox(height: 14),
+            _ReviewPair(
+              firstLabel: 'Raza',
+              firstValue: _breedName(),
+              secondLabel: 'Tamaño',
+              secondValue: _sizeLabel(),
+            ),
+            const SizedBox(height: 14),
+            _ReviewPair(
+              firstLabel: 'Color',
+              firstValue: _color.text.trim(),
+              secondLabel: 'Nacimiento',
+              secondValue: _birthDate == null
+                  ? 'No especificada'
+                  : _isoDate(_birthDate!),
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            const Text(
+              'Señas particulares',
+              style: TextStyle(
+                color: accountMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _marks.text.trim().isEmpty
+                  ? 'Sin señas particulares registradas'
+                  : _marks.text.trim(),
+              style: const TextStyle(color: petInk, height: 1.35),
+            ),
             if (_createdId != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -602,8 +804,108 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
 
   String _speciesName() =>
       '${_species.firstWhere((item) => item['id_especie'] == _speciesId, orElse: () => {'nombre': 'Mascota'})['nombre']}';
+  String _breedName() {
+    if (!_breedChosen || _breedId == null) return 'Mestiza / sin especificar';
+    return '${_breeds.firstWhere((item) => '${item['id_raza']}' == _breedId, orElse: () => {'nombre': 'Sin especificar'})['nombre']}';
+  }
+
+  String _sexLabel() => _sex == 'macho' ? 'Macho' : 'Hembra';
   String _sizeLabel() =>
       {'pequeno': 'Pequeña', 'mediano': 'Mediana', 'grande': 'Grande'}[_size]!;
+}
+
+class _ReviewPair extends StatelessWidget {
+  const _ReviewPair({
+    required this.firstLabel,
+    required this.firstValue,
+    required this.secondLabel,
+    required this.secondValue,
+  });
+
+  final String firstLabel;
+  final String firstValue;
+  final String secondLabel;
+  final String secondValue;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: _ReviewValue(label: firstLabel, value: firstValue),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: _ReviewValue(label: secondLabel, value: secondValue),
+      ),
+    ],
+  );
+}
+
+class _ReviewValue extends StatelessWidget {
+  const _ReviewValue({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: const TextStyle(
+          color: accountMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        value,
+        style: const TextStyle(color: petInk, fontWeight: FontWeight.w800),
+      ),
+    ],
+  );
+}
+
+class _ReviewPhoto extends StatelessWidget {
+  const _ReviewPhoto({required this.photo, required this.label});
+  final XFile photo;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(18),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        _LocalPhoto(photo: photo),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(7, 18, 7, 7),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Color(0xB8000000)],
+              ),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Progress extends StatelessWidget {
@@ -650,10 +952,12 @@ class _PhotoSlot extends StatelessWidget {
     required this.label,
     required this.photo,
     required this.onTap,
+    required this.onRemove,
   });
   final String label;
   final XFile? photo;
   final VoidCallback onTap;
+  final VoidCallback onRemove;
   @override
   Widget build(BuildContext context) => Pressable(
     child: Material(
@@ -673,40 +977,81 @@ class _PhotoSlot extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      photo == null
-                          ? Icons.photo_camera_outlined
-                          : Icons.image_outlined,
-                      color: petDarkOrange,
-                      size: 31,
+              if (photo != null)
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: _LocalPhoto(photo: photo!),
+                  ),
+                )
+              else
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.photo_camera_outlined,
+                        color: petDarkOrange,
+                        size: 31,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: petDarkOrange,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (photo != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(8, 20, 8, 9),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.vertical(
+                        bottom: Radius.circular(20),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Color(0xB8000000)],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
+                    child: Text(
                       label,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: petDarkOrange,
+                        color: Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
               if (photo != null)
-                const Positioned(
-                  top: 10,
-                  right: 10,
-                  child: CircleAvatar(
-                    radius: 13,
-                    backgroundColor: Color(0xFF12CFA5),
-                    child: Icon(
-                      Icons.check_rounded,
-                      color: Color(0xFF063D33),
-                      size: 18,
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Material(
+                    color: Colors.white,
+                    shape: const CircleBorder(),
+                    elevation: 3,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: onRemove,
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: petInk,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -716,6 +1061,31 @@ class _PhotoSlot extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _LocalPhoto extends StatelessWidget {
+  const _LocalPhoto({required this.photo});
+  final XFile photo;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Uint8List>(
+    future: photo.readAsBytes(),
+    builder: (_, snapshot) {
+      if (snapshot.hasData) {
+        return Image.memory(snapshot.data!, fit: BoxFit.cover);
+      }
+      return const ColoredBox(
+        color: Color(0xFFFFDDC5),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    },
+  );
+}
+
+class _BreedOption {
+  const _BreedOption(this.id, this.name);
+  final String? id;
+  final String name;
 }
 
 List<Map<String, dynamic>> _maps(Object? value) => value is List

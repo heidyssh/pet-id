@@ -44,7 +44,8 @@ String? _validateNewPassword(String? value) {
   if (value.length < 8) return 'Escribe al menos 8 caracteres.';
   if (!RegExp(r'[A-Z]').hasMatch(value) ||
       !RegExp(r'[a-z]').hasMatch(value) ||
-      !RegExp(r'[0-9]').hasMatch(value)) {
+      !RegExp(r'[0-9]').hasMatch(value) ||
+      !RegExp(r'[^\p{L}\p{N}\s]', unicode: true).hasMatch(value)) {
     return 'Cumple todos los requisitos de la contraseña.';
   }
   if (utf8.encode(value).length > 72) {
@@ -54,9 +55,13 @@ String? _validateNewPassword(String? value) {
 }
 
 class _PasswordRequirements extends StatelessWidget {
-  const _PasswordRequirements({required this.controller});
+  const _PasswordRequirements({
+    required this.controller,
+    this.confirmController,
+  });
 
   final TextEditingController controller;
+  final TextEditingController? confirmController;
 
   @override
   Widget build(BuildContext context) =>
@@ -64,21 +69,36 @@ class _PasswordRequirements extends StatelessWidget {
         valueListenable: controller,
         builder: (context, value, _) {
           final password = value.text;
+          final confirmation = confirmController?.text ?? '';
           final started = password.isNotEmpty;
           final requirements = <(String, bool)>[
-            ('8 caracteres', password.length >= 8),
+            ('Al menos 8 caracteres', password.length >= 8),
             ('Una mayúscula', RegExp(r'[A-Z]').hasMatch(password)),
             ('Una minúscula', RegExp(r'[a-z]').hasMatch(password)),
             ('Un número', RegExp(r'[0-9]').hasMatch(password)),
+            (
+              'Al menos un símbolo: #, \$, -, @ o !',
+              RegExp(r'[^\p{L}\p{N}\s]', unicode: true).hasMatch(password),
+            ),
+            if (confirmController != null)
+              (
+                'Escrita igual en Confirmar contraseña',
+                confirmation.isNotEmpty && confirmation == password,
+              ),
           ];
           return Semantics(
             liveRegion: true,
             label: 'Requisitos de contraseña',
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Wrap(
-                spacing: 7,
-                runSpacing: 7,
+            child: Container(
+              margin: const EdgeInsets.only(top: 2, bottom: 18),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: accountBorder, width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final requirement in requirements)
                     _PasswordRequirementChip(
@@ -112,28 +132,11 @@ class _PasswordRequirementChip extends StatelessWidget {
         : valid
         ? const Color(0xFF176D61)
         : const Color(0xFFB42318);
-    final background = !started
-        ? const Color(0xFFF5F2EF)
-        : valid
-        ? const Color(0xFFDDF5EE)
-        : const Color(0xFFFFE8E5);
-    final border = !started
-        ? accountBorder
-        : valid
-        ? const Color(0xFF8BD8C5)
-        : const Color(0xFFFFB4AB);
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
@@ -151,12 +154,14 @@ class _PasswordRequirementChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -179,7 +184,11 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
     try {
       await action();
     } catch (exception) {
-      if (mounted) setState(() => error = _errorMessage(exception));
+      if (mounted) {
+        final message = _errorMessage(exception);
+        setState(() => error = null);
+        showPetToast(context, message, type: PetToastType.error);
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -278,6 +287,7 @@ class _AccountFormState extends _FormState<AccountForm> {
   final _organizationName = TextEditingController();
   late final _email = TextEditingController(text: widget.initialEmail);
   final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
   bool _hide = true;
   bool _organization = false;
   String _organizationType = 'veterinaria';
@@ -292,6 +302,7 @@ class _AccountFormState extends _FormState<AccountForm> {
       _organizationName,
       _email,
       _password,
+      _confirmPassword,
     ]) {
       controller.dispose();
     }
@@ -324,14 +335,12 @@ class _AccountFormState extends _FormState<AccountForm> {
         },
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _organization
-                ? 'Cuenta creada. Tu organización quedó pendiente de revisión.'
-                : '¡Cuenta creada! Ya puedes usar PetID.',
-          ),
-        ),
+      showPetToast(
+        context,
+        _organization
+            ? 'Cuenta creada. Tu organización quedó pendiente de revisión.'
+            : '¡Cuenta creada! Ya puedes iniciar sesión.',
+        type: PetToastType.success,
       );
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
@@ -677,14 +686,44 @@ class _AccountFormState extends _FormState<AccountForm> {
                         : (value) => value == null || value.isEmpty
                               ? 'Escribe tu contraseña.'
                               : null,
-                    onFieldSubmitted: (_) => _submitValidated(),
+                    scrollPadding: const EdgeInsets.only(bottom: 280),
+                    onFieldSubmitted: register
+                        ? null
+                        : (_) => _submitValidated(),
                   ),
                 ),
-                if (register)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 0, bottom: 14),
-                    child: _PasswordRequirements(controller: _password),
+                if (register) ...[
+                  AccountField(
+                    'Confirmar contraseña',
+                    TextFormField(
+                      controller: _confirmPassword,
+                      enabled: !busy,
+                      obscureText: _hide,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textInputAction: TextInputAction.done,
+                      scrollPadding: const EdgeInsets.only(bottom: 300),
+                      decoration: accountInput(
+                        'Escribe la contraseña otra vez',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Confirma tu contraseña.';
+                        }
+                        if (value != _password.text) {
+                          return 'Las contraseñas no coinciden.';
+                        }
+                        return null;
+                      },
+                      onChanged: (_) => setState(() {}),
+                      onFieldSubmitted: (_) => _submitValidated(),
+                    ),
                   ),
+                  _PasswordRequirements(
+                    controller: _password,
+                    confirmController: _confirmPassword,
+                  ),
+                ],
               ],
             ),
           ),
@@ -727,7 +766,15 @@ class _AccountFormState extends _FormState<AccountForm> {
   }
 
   void _submitValidated() {
-    if (busy || !form.currentState!.validate()) return;
+    if (busy) return;
+    if (!form.currentState!.validate()) {
+      showPetToast(
+        context,
+        'Revisa los campos marcados antes de continuar.',
+        type: PetToastType.warning,
+      );
+      return;
+    }
     FocusScope.of(context).unfocus();
     _submit();
   }

@@ -3,6 +3,7 @@ import { listarNotificaciones, marcarLeida } from '../services/notificacion.serv
 import {
   actualizarUbicacionAlertas,
   desactivarUbicacionAlertas,
+  obtenerUbicacionAlertas,
 } from '../services/alertaUbicacion.service.js';
 import {
   registrarDispositivoPush,
@@ -35,6 +36,11 @@ export const actualizarUbicacion = asyncHandler(async (req, res) => {
 export const desactivarUbicacion = asyncHandler(async (req, res) => {
   await desactivarUbicacionAlertas(req.usuario.id_usuario);
   return res.json({ success: true, message: 'Alertas por ubicación desactivadas' });
+});
+
+export const consultarUbicacion = asyncHandler(async (req, res) => {
+  const data = await obtenerUbicacionAlertas(req.usuario.id_usuario);
+  return res.json({ success: true, data });
 });
 
 export const registrarDispositivo = asyncHandler(async (req, res) => {

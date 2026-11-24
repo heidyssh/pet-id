@@ -145,8 +145,15 @@ class Session extends ChangeNotifier {
     loading = true;
     restoreError = null;
     notifyListeners();
+    String? saved;
     try {
-      final saved = await _storage.read(key: _key);
+      // En una instalación nueva el almacén seguro puede tardar en estar
+      // disponible. Eso no es una sesión fallida y no debe alarmar al usuario.
+      try {
+        saved = await _storage.read(key: _key);
+      } catch (_) {
+        saved = null;
+      }
       if (saved == null) return;
       final tokens = jsonDecode(saved) as Map<String, dynamic>;
       var access = tokens['access_token'] as String;
@@ -224,6 +231,12 @@ class Session extends ChangeNotifier {
       await _renew();
       return api.request(method, path, body: body, token: _access);
     }
+  }
+
+  Future<void> updateProfile(Map<String, Object?> changes) async {
+    final response = await authRequest('PATCH', '/auth/me', body: changes);
+    user = Map<String, dynamic>.from(response['data'] as Map);
+    notifyListeners();
   }
 
   Future<void> _renew() async {

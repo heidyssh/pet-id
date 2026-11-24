@@ -88,6 +88,20 @@ export async function desactivarUbicacionAlertas(idUsuario) {
   await SuscripcionUbicacion.destroy({ where: { id_usuario: idUsuario } });
 }
 
+export async function obtenerUbicacionAlertas(idUsuario) {
+  const suscripcion = await SuscripcionUbicacion.findByPk(idUsuario);
+  if (!suscripcion) return { activa: false };
+  const coordenadas = suscripcion.ubicacion?.coordinates;
+  return {
+    activa: suscripcion.activa,
+    radio_km: Number(suscripcion.radio_km),
+    fecha_actualizacion: suscripcion.fecha_actualizacion,
+    ubicacion: Array.isArray(coordenadas)
+      ? { longitud: coordenadas[0], latitud: coordenadas[1] }
+      : null,
+  };
+}
+
 export async function notificarSuscriptoresCercanos(idReporte) {
   const candidatos = await sequelize.query(`
     SELECT

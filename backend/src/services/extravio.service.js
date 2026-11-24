@@ -57,6 +57,12 @@ export async function crearReporteExtravio(
   datos,
   idUsuario
 ) {
+  const ahora = new Date();
+  const fechaSolicitada = new Date(datos.fecha_perdida);
+  const fechaPerdida = fechaSolicitada > ahora
+    ? ahora
+    : fechaSolicitada;
+
   const reporteCreado = await sequelize.transaction(async (transaction) => {
     const mascota = await Mascota.findOne({
       where: {
@@ -98,7 +104,7 @@ export async function crearReporteExtravio(
 
     const reporte = await ReporteExtravio.create({
       id_mascota: mascota.id_mascota,
-      fecha_perdida: new Date(datos.fecha_perdida),
+      fecha_perdida: fechaPerdida,
       ubicacion: crearPuntoGeografico(
         datos.ubicacion
       ),

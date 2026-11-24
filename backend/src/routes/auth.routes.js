@@ -6,12 +6,14 @@ import {
   login,
   loginGoogle,
   me,
+  actualizarMe,
 } from '../controllers/auth.controller.js';
 
 import {
   registroSchema,
   loginSchema,
   loginGoogleSchema,
+  actualizarPerfilSchema,
 } from '../schemas/auth.schema.js';
 
 import {
@@ -57,6 +59,13 @@ router.get(
   '/me',
   verificarToken,
   me
+);
+
+router.patch(
+  '/me',
+  verificarToken,
+  validar(actualizarPerfilSchema),
+  actualizarMe
 );
 
 router.post(

@@ -1,6 +1,8 @@
 
 import { z } from 'zod';
 
+const MARGEN_RELOJ_MS = 5 * 60 * 1000;
+
 const idSchema = z.union([
   z.number().int().positive().safe(),
   z.string().regex(/^[1-9]\d{0,18}$/),
@@ -20,7 +22,8 @@ export const crearExtravioSchema = z.strictObject({
   fecha_perdida: z.iso.datetime({
     offset: true,
   }).refine(
-    (fecha) => new Date(fecha).getTime() <= Date.now(),
+    (fecha) =>
+      new Date(fecha).getTime() <= Date.now() + MARGEN_RELOJ_MS,
     'La fecha no puede estar en el futuro'
   ),
 

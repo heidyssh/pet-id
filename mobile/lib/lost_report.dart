@@ -47,7 +47,12 @@ class _LostReportPageState extends State<LostReportPage> {
   void initState() {
     super.initState();
     _search.addListener(_scheduleSearch);
+    _searchFocus.addListener(_onSearchFocusChanged);
     _locate();
+  }
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -55,6 +60,7 @@ class _LostReportPageState extends State<LostReportPage> {
     _searchTimer?.cancel();
     _reverseTimer?.cancel();
     _search.removeListener(_scheduleSearch);
+    _searchFocus.removeListener(_onSearchFocusChanged);
     _search.dispose();
     _details.dispose();
     _searchFocus.dispose();
@@ -240,6 +246,7 @@ class _LostReportPageState extends State<LostReportPage> {
   @override
   Widget build(BuildContext context) {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final searchingPlace = _searchFocus.hasFocus;
     return Scaffold(
       backgroundColor: petCream,
       resizeToAvoidBottomInset: false,
@@ -249,11 +256,21 @@ class _LostReportPageState extends State<LostReportPage> {
           SafeArea(child: _mapControls()),
           Align(
             alignment: Alignment.bottomCenter,
-            child: AnimatedPadding(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              padding: EdgeInsets.only(bottom: keyboard),
-              child: _panel(),
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              offset: searchingPlace ? const Offset(0, 1.06) : Offset.zero,
+              child: IgnorePointer(
+                ignoring: searchingPlace,
+                child: AnimatedPadding(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  padding: EdgeInsets.only(
+                    bottom: searchingPlace ? 0 : keyboard,
+                  ),
+                  child: _panel(),
+                ),
+              ),
             ),
           ),
         ],
@@ -438,79 +455,93 @@ class _LostReportPageState extends State<LostReportPage> {
     ),
   );
 
-  Widget _panel() => Container(
-    height: 440,
-    padding: const EdgeInsets.fromLTRB(20, 24, 20, 18),
-    decoration: const BoxDecoration(
-      color: petCream,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
-      boxShadow: [
-        BoxShadow(
-          color: Color(0x16000000),
-          blurRadius: 20,
-          offset: Offset(0, -4),
-        ),
-      ],
-    ),
-    child: SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+  Widget _panel() {
+    final systemBottom = MediaQuery.paddingOf(context).bottom;
+    final bottomPadding = systemBottom < 14 ? 14.0 : systemBottom + 8;
+
+    return Container(
+      height: 440,
+      padding: EdgeInsets.fromLTRB(20, 24, 20, bottomPadding),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x16000000),
+            blurRadius: 20,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            '¿Dónde se perdió?',
-            style: TextStyle(
-              color: petInk,
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '¿Dónde se perdió?',
+                    style: TextStyle(
+                      color: petInk,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _petCard(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Avisar a usuarios en un radio de',
+                    style: TextStyle(
+                      color: petInk,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Row(
+                    children: [
+                      for (final radius in const [0.5, 1.0, 3.0]) ...[
+                        Expanded(child: _radiusButton(radius)),
+                        if (radius != 3) const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  const Text(
+                    'Detalles para quien la vea',
+                    style: TextStyle(
+                      color: petInk,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _details,
+                    enabled: !_sending,
+                    maxLength: 300,
+                    minLines: 2,
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: accountInput(
+                      'Ej.: se asustó con los cohetes, lleva collar rojo',
+                    ).copyWith(counterText: ''),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 9),
+                    accountError(context, _error!),
+                  ],
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          _petCard(),
-          const SizedBox(height: 16),
-          const Text(
-            'Avisar a usuarios en un radio de',
-            style: TextStyle(
-              color: petInk,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 9),
-          Row(
-            children: [
-              for (final radius in const [0.5, 1.0, 3.0]) ...[
-                Expanded(child: _radiusButton(radius)),
-                if (radius != 3) const SizedBox(width: 8),
-              ],
-            ],
-          ),
-          const SizedBox(height: 15),
-          const Text(
-            'Detalles para quien la vea',
-            style: TextStyle(
-              color: petInk,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _details,
-            enabled: !_sending,
-            maxLength: 300,
-            minLines: 2,
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: accountInput(
-              'Ej.: se asustó con los cohetes, lleva collar rojo',
-            ).copyWith(counterText: ''),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 9),
-            accountError(context, _error!),
-          ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Pressable(
             child: FilledButton.icon(
               onPressed: _sending ? null : _submit,
@@ -538,8 +569,8 @@ class _LostReportPageState extends State<LostReportPage> {
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
   Widget _petCard() => Container(
     padding: const EdgeInsets.all(12),

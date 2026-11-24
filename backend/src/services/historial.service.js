@@ -24,6 +24,23 @@ export async function crearRegistroClinico(datos, idMascota, organizacion, idUsu
   });
 }
 
+export async function crearRegistroClinicoPropio(datos, idMascota, idUsuario) {
+  if (!validarIdPositivo(idMascota)) throw new AppError('Mascota inválida', 400);
+  const mascota = await Mascota.findOne({
+    where: { id_mascota: idMascota, id_dueno: idUsuario },
+    attributes: ['id_mascota'],
+  });
+  if (!mascota) throw new AppError('Mascota no encontrada', 404);
+  validarFecha(datos);
+  return HistorialClinico.create({
+    ...datos,
+    proxima_fecha: datos.proxima_fecha ?? null,
+    id_mascota: mascota.id_mascota,
+    id_organizacion: null,
+    id_usuario_registro: idUsuario,
+  });
+}
+
 export async function historialDeMascota(idMascota, idUsuario) {
   if (!validarIdPositivo(idMascota)) throw new AppError('Mascota inválida', 400);
   const mascota = await Mascota.findOne({
