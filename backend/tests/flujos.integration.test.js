@@ -146,6 +146,19 @@ try {
       id_reporte: reporte.id_reporte,
     },
   }), 1);
+  const avistamientoPropio = await crearAvistamiento({
+    id_especie: 1,
+    fecha_avistamiento: new Date().toISOString(),
+    ubicacion: { latitud: 15.7836, longitud: -86.7917 },
+    color_principal: 'café', tamano: 'mediano',
+    senas_particulares: 'mancha blanca', descripcion: 'La mascota del propio dueño',
+  }, usuarios[0].id_usuario);
+  assert.equal(await modelos.Coincidencia.count({
+    where: {
+      id_avistamiento: avistamientoPropio.id_avistamiento,
+      id_reporte: reporte.id_reporte,
+    },
+  }), 0, 'El dueño no debe generar coincidencias contra su propia mascota');
   const coincidenciasDueno = await listarCoincidenciasReporte(
     reporte.id_reporte,
     usuarios[0].id_usuario

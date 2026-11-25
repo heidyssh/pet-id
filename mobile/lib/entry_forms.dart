@@ -1371,18 +1371,17 @@ class _ScanResultSheet extends StatelessWidget {
         : const <Map<String, dynamic>>[];
     final completed = data['procesamiento'] == 'visual_completado';
 
-    return SafeArea(
-      top: false,
-      child: FractionallySizedBox(
-        heightFactor: matches.isEmpty ? .58 : .82,
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .86,
+        ),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            22,
-            12,
-            22,
-            20 + petSheetBottomInset(context),
-          ),
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
@@ -1396,60 +1395,60 @@ class _ScanResultSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: completed
-                          ? const Color(0xFFDDF5EE)
-                          : const Color(0xFFFFE8D8),
-                      borderRadius: BorderRadius.circular(15),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDDF5EE),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.check_rounded,
+                        color: Color(0xFF176D61),
+                        size: 28,
+                      ),
                     ),
-                    child: Icon(
-                      completed
-                          ? Icons.center_focus_strong_rounded
-                          : Icons.info_outline_rounded,
-                      color: completed
-                          ? const Color(0xFF176D61)
-                          : petDarkOrange,
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          completed ? 'Escaneo completado' : 'Reporte guardado',
-                          style: const TextStyle(
-                            color: petInk,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Avistamiento publicado',
+                            style: TextStyle(
+                              color: petInk,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                        Text(
-                          completed
-                              ? matches.isEmpty
-                                    ? 'No encontramos una coincidencia visual por ahora.'
-                                    : 'Estas son las mascotas visualmente más parecidas.'
-                              : 'El reconocimiento visual no pudo completarse en este intento.',
-                          style: const TextStyle(
-                            color: accountMuted,
-                            fontSize: 13,
-                            height: 1.3,
+                          const SizedBox(height: 3),
+                          Text(
+                            completed
+                                ? matches.isEmpty
+                                      ? 'La foto fue analizada sin una coincidencia clara.'
+                                      : 'Encontramos candidatos para que sus familias los revisen.'
+                                : 'La foto quedó guardada, aunque no pudimos compararla ahora.',
+                            style: const TextStyle(
+                              color: Color(0xFF176D61),
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               if (matches.isNotEmpty)
-                Expanded(
+                Flexible(
                   child: ListView.separated(
+                    shrinkWrap: true,
                     physics: const BouncingScrollPhysics(),
                     itemCount: matches.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -1460,46 +1459,45 @@ class _ScanResultSheet extends StatelessWidget {
                   ),
                 )
               else
-                Expanded(
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: accountBorder, width: 2),
-                      ),
-                      child: Text(
-                        completed
-                            ? 'La foto sí fue analizada. Puedes continuar con el reporte; si aparece una coincidencia después, el propietario deberá confirmarla.'
-                            : 'Comprueba que Roboflow esté configurado y que la foto muestre claramente el rostro o cuerpo de un perro o gato.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: accountMuted,
-                          height: 1.4,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(19),
+                    border: Border.all(color: accountBorder, width: 2),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.visibility_outlined, color: petDarkOrange),
+                      SizedBox(width: 11),
+                      Expanded(
+                        child: Text(
+                          'Se mostrará en el mapa como un avistamiento: una mascota vista cuya identidad todavía no está confirmada.',
+                          style: TextStyle(color: accountMuted, height: 1.4),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF1E8),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(17),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.verified_user_outlined, color: petDarkOrange),
+                    Icon(Icons.shield_outlined, color: petDarkOrange),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'La similitud orienta la búsqueda; nunca confirma por sí sola la identidad. El propietario debe verificarla.',
+                        'El reconocimiento solo propone posibles coincidencias. La familia siempre debe verificarlas.',
                         style: TextStyle(
                           color: accountMuted,
                           fontSize: 12,
-                          height: 1.3,
+                          height: 1.35,
                         ),
                       ),
                     ),
@@ -1508,7 +1506,7 @@ class _ScanResultSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               AccountButton(
-                'Finalizar reporte',
+                'Entendido',
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],

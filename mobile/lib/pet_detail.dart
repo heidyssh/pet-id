@@ -163,23 +163,82 @@ class _PetDetailPageState extends State<PetDetailPage> {
       );
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('¿Ya está en casa?'),
-        content: Text(
-          'Cerraremos la alerta de ${_pet['nombre']} y dejará de aparecer como perdida.',
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        padding: EdgeInsets.only(bottom: petSheetBottomInset(sheetContext)),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+          decoration: const BoxDecoration(
+            color: petCream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 46,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const CircleAvatar(
+                radius: 29,
+                backgroundColor: Color(0xFFDDF5EE),
+                child: Icon(
+                  Icons.home_rounded,
+                  color: Color(0xFF087968),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                '¿${_pet['nombre']} ya está en casa?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: petInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Cerraremos su alerta y dejará de aparecer como perdida en el mapa.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: accountMuted, height: 1.4),
+              ),
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: () => Navigator.pop(sheetContext, true),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Sí, ya está en casa'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  backgroundColor: Color(0xFF0ACAA5),
+                  foregroundColor: petInk,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext, false),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sí, está en casa'),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -270,8 +329,10 @@ class _PetDetailPageState extends State<PetDetailPage> {
     final photos = _galleryOf(context, _pet);
     final lost = _pet['estado'] == 'perdido';
     return Scaffold(
-      backgroundColor: _peach,
+      backgroundColor: petCream,
       body: SafeArea(
+        left: false,
+        right: false,
         bottom: false,
         child: RefreshIndicator(
           color: petOrange,
@@ -293,12 +354,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
                     20,
                     30 + MediaQuery.viewPaddingOf(context).bottom,
                   ),
-                  decoration: const BoxDecoration(
-                    color: petCream,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(38),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(color: petCream),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -500,21 +556,46 @@ class _PetDetailPageState extends State<PetDetailPage> {
     ],
   );
 
-  Widget _facts() => GridView.count(
-    crossAxisCount: 2,
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    mainAxisSpacing: 10,
-    crossAxisSpacing: 10,
-    childAspectRatio: 2.1,
+  Widget _facts() => Column(
     children: [
-      _Fact(label: 'Especie', value: _species(_pet)),
-      _Fact(
-        label: 'Raza',
-        value: _pet['raza']?['nombre']?.toString() ?? 'Sin especificar',
+      SizedBox(
+        height: 94,
+        child: Row(
+          children: [
+            Expanded(
+              child: _Fact(label: 'Especie', value: _species(_pet)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _Fact(
+                label: 'Raza',
+                value: _pet['raza']?['nombre']?.toString() ?? 'Sin especificar',
+              ),
+            ),
+          ],
+        ),
       ),
-      _Fact(label: 'Edad', value: _age(_pet['fecha_nacimiento'])),
-      _Fact(label: 'Color', value: '${_pet['color_principal'] ?? 'Sin dato'}'),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 94,
+        child: Row(
+          children: [
+            Expanded(
+              child: _Fact(
+                label: 'Edad',
+                value: _age(_pet['fecha_nacimiento']),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _Fact(
+                label: 'Color',
+                value: '${_pet['color_principal'] ?? 'Sin dato'}',
+              ),
+            ),
+          ],
+        ),
+      ),
     ],
   );
 

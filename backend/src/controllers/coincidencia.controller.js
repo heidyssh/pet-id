@@ -6,7 +6,7 @@ import {
 } from '../services/coincidencia.service.js';
 
 export const buscarVisuales = asyncHandler(async (req, res) => {
-  const data = await buscarMascotasSimilares(req.file, 5);
+  const data = await buscarMascotasSimilares(req.file, 5, req.usuario.id_usuario);
   return res.status(200).json({ success: true, data });
 });
 

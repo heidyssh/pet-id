@@ -20,7 +20,14 @@ enum _Filter { all, lost, sighted }
 enum _LoadState { loading, ready, noLocation, error }
 
 class NearbyMapPage extends StatefulWidget {
-  const NearbyMapPage({super.key});
+  const NearbyMapPage({
+    super.key,
+    this.ownPetIds = const <String>{},
+    this.onOpenOwnPet,
+  });
+
+  final Set<String> ownPetIds;
+  final Future<void> Function(Map<String, dynamic> pet)? onOpenOwnPet;
 
   @override
   State<NearbyMapPage> createState() => _NearbyMapPageState();
@@ -116,6 +123,8 @@ class _NearbyMapPageState extends State<NearbyMapPage>
   Future<void> _openAlert(Map<String, dynamic> item) async {
     _select(item);
     final sighted = item['tipo_alerta'] == 'avistado';
+    final ownPet =
+        !sighted && widget.ownPetIds.contains('${item['id_mascota']}');
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -123,7 +132,15 @@ class _NearbyMapPageState extends State<NearbyMapPage>
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => _AlertDetailSheet(
         item: item,
-        onReportSighting: sighted
+        ownPet: ownPet,
+        onOpenOwnPet: ownPet && widget.onOpenOwnPet != null
+            ? () async {
+                Navigator.pop(sheetContext);
+                await widget.onOpenOwnPet!(item);
+                if (mounted) await _load(askPermission: false);
+              }
+            : null,
+        onReportSighting: sighted || ownPet
             ? null
             : () {
                 Navigator.pop(sheetContext);
@@ -371,6 +388,10 @@ class _NearbyMapPageState extends State<NearbyMapPage>
           ],
         ),
         const SizedBox(height: 8),
+        if (_state == _LoadState.ready) ...[
+          const _MapLegend(),
+          const SizedBox(height: 12),
+        ],
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: _panelBody(),
@@ -541,20 +562,75 @@ class _AlertCard extends StatelessWidget {
   }
 }
 
+class _MapLegend extends StatelessWidget {
+  const _MapLegend();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: accountBorder),
+    ),
+    child: const Row(
+      children: [
+        _LegendItem(color: _pink, label: 'Familias buscando'),
+        SizedBox(width: 14),
+        _LegendItem(color: _yellow, label: 'Mascotas vistas'),
+      ],
+    ),
+  );
+}
+
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: accountMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _AlertDetailSheet extends StatelessWidget {
-  const _AlertDetailSheet({required this.item, this.onReportSighting});
+  const _AlertDetailSheet({
+    required this.item,
+    required this.ownPet,
+    this.onReportSighting,
+    this.onOpenOwnPet,
+  });
   final Map<String, dynamic> item;
+  final bool ownPet;
   final VoidCallback? onReportSighting;
+  final VoidCallback? onOpenOwnPet;
 
   @override
   Widget build(BuildContext context) {
     final sighted = item['tipo_alerta'] == 'avistado';
     final photo = context.read<PetIdApi>().imageUrl(item['foto']);
     final title = sighted
-        ? [
-            item['especie'],
-            item['color_principal'],
-          ].whereType<String>().where((value) => value.isNotEmpty).join(' · ')
+        ? 'Mascota avistada'
         : [
             item['nombre_mascota'],
             item['raza'] ?? item['especie'],
@@ -598,6 +674,28 @@ class _AlertDetailSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (sighted ? _yellow : _pink).withValues(alpha: .2),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    sighted ? 'AVISTAMIENTO' : 'MASCOTA PERDIDA',
+                    style: const TextStyle(
+                      color: petInk,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               Text(
                 title.isEmpty ? 'Mascota sin identificar' : title,
                 style: const TextStyle(
@@ -609,7 +707,9 @@ class _AlertDetailSheet extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 [
-                      sighted ? 'Avistada' : 'Reportada como perdida',
+                      sighted
+                          ? 'Vista por alguien; su identidad no está confirmada'
+                          : 'Su familia la está buscando',
                       item['referencia_lugar'],
                       _distance(item['distancia_km']),
                     ]
@@ -632,10 +732,43 @@ class _AlertDetailSheet extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onReportSighting,
                   icon: const Icon(Icons.camera_alt_rounded),
-                  label: const Text('Creo que encontré esta mascota'),
+                  label: const Text('Vi a esta mascota'),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(58),
                     backgroundColor: petOrange,
+                    foregroundColor: petInk,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
+              if (ownPet) ...[
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDF5EE),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Text(
+                    'Esta alerta es tuya. Si tu mascota ya regresó, abre su ficha y márcala como encontrada.',
+                    style: TextStyle(
+                      color: Color(0xFF176D61),
+                      height: 1.4,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: onOpenOwnPet,
+                  icon: const Icon(Icons.pets_rounded),
+                  label: const Text('Abrir ficha de mi mascota'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(58),
+                    backgroundColor: const Color(0xFF0ACAA5),
                     foregroundColor: petInk,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(19),

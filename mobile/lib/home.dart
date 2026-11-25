@@ -267,9 +267,14 @@ class _CitizenHomeState extends State<CitizenHome> {
 
   @override
   Widget build(BuildContext context) {
+    final sessionUserId = context.watch<Session>().user?['id_usuario'];
     final pages = [
       _homePage(),
-      const NearbyMapPage(),
+      NearbyMapPage(
+        key: ValueKey('nearby-$sessionUserId'),
+        ownPetIds: _pets.map((pet) => '${pet['id_mascota']}').toSet(),
+        onOpenOwnPet: _openPet,
+      ),
       _petsPage(),
       _ProfilePage(
         pets: _pets,

@@ -16,7 +16,7 @@ import { prepararConsultaVisual } from './foto.service.js';
 import { similitudCoseno, DIMENSIONES_VECTOR } from './embedding.service.js';
 import { env } from '../config/config.js';
 
-export async function buscarMascotasSimilares(archivo, limite = 5) {
+export async function buscarMascotasSimilares(archivo, limite = 5, idUsuarioExcluir = null) {
   const { deteccion, vector } = await prepararConsultaVisual(archivo);
   const candidatos = await sequelize.query(`
     SELECT
@@ -39,10 +39,12 @@ export async function buscarMascotasSimilares(archivo, limite = 5) {
     WHERE vv.modelo = :modelo
       AND vv.dimensiones = :dimensiones
       AND r.estado = 'activo'
+      AND (:id_usuario_excluir IS NULL OR m.id_dueno <> :id_usuario_excluir)
   `, {
     replacements: {
       modelo: env.DINO_MODEL_ID,
       dimensiones: DIMENSIONES_VECTOR,
+      id_usuario_excluir: idUsuarioExcluir,
     },
     type: QueryTypes.SELECT,
   });
@@ -135,6 +137,7 @@ async function puntuacionesContexto(idAvistamiento) {
       AND r.estado = 'activo'
       AND (a.id_especie IS NULL OR a.id_especie = m.id_especie)
       AND a.fecha_avistamiento >= r.fecha_perdida - INTERVAL '1 day'
+      AND (a.id_usuario IS NULL OR a.id_usuario <> m.id_dueno)
   `, {
     replacements: { id_avistamiento: idAvistamiento },
     type: QueryTypes.SELECT,
@@ -163,6 +166,7 @@ async function candidatosVisuales(vector, idAvistamiento) {
       AND vv.dimensiones = :dimensiones
       AND (a.id_especie IS NULL OR a.id_especie = m.id_especie)
       AND a.fecha_avistamiento >= r.fecha_perdida - INTERVAL '1 day'
+      AND (a.id_usuario IS NULL OR a.id_usuario <> m.id_dueno)
   `, {
     replacements: {
       id_avistamiento: idAvistamiento,
@@ -341,6 +345,7 @@ export async function generarCoincidencias(idAvistamiento) {
         AND r.estado = 'activo'
         AND (a.id_especie IS NULL OR a.id_especie = m.id_especie)
         AND a.fecha_avistamiento >= r.fecha_perdida - INTERVAL '1 day'
+        AND (a.id_usuario IS NULL OR a.id_usuario <> m.id_dueno)
         AND (
           a.ubicacion IS NULL OR r.ubicacion IS NULL OR
           ST_DWithin(a.ubicacion, r.ubicacion, 25000)
