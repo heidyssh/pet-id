@@ -1636,22 +1636,35 @@ class _ProfilePageState extends State<_ProfilePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: petInk,
-                fontSize: 23,
-                fontWeight: FontWeight.w900,
-              ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          18 + petSheetBottomInset(context),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .78,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: petInk,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                child,
+              ],
             ),
-            const SizedBox(height: 14),
-            child,
-          ],
+          ),
         ),
       ),
     );
@@ -2224,7 +2237,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   @override
   Widget build(BuildContext context) => AnimatedPadding(
     duration: const Duration(milliseconds: 220),
-    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
     child: Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
       decoration: const BoxDecoration(
@@ -2234,6 +2247,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       child: Form(
         key: _form,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

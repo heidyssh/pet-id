@@ -1376,7 +1376,12 @@ class _ScanResultSheet extends StatelessWidget {
       child: FractionallySizedBox(
         heightFactor: matches.isEmpty ? .58 : .82,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
+          padding: EdgeInsets.fromLTRB(
+            22,
+            12,
+            22,
+            20 + petSheetBottomInset(context),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

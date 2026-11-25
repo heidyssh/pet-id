@@ -9,6 +9,13 @@ import 'welcome.dart';
 const accountBorder = Color(0xFFFDE1D1);
 const accountMuted = Color(0xFF5D686C);
 
+/// Espacio que debe reservar un panel inferior para no quedar detrás del
+/// teclado ni de la barra de navegación de Android en modo edge-to-edge.
+double petSheetBottomInset(BuildContext context) => math.max(
+  MediaQuery.viewInsetsOf(context).bottom,
+  MediaQuery.viewPaddingOf(context).bottom,
+);
+
 enum PetToastType { success, error, warning, info }
 
 OverlayEntry? _activePetToast;

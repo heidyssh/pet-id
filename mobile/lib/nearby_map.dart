@@ -47,8 +47,8 @@ class _NearbyMapPageState extends State<NearbyMapPage>
       _Filter.sighted => [..._sighted],
     };
     values.sort(
-      (a, b) => ((a['distancia_km'] as num?) ?? 999).compareTo(
-        (b['distancia_km'] as num?) ?? 999,
+      (a, b) => (_apiDouble(a['distancia_km']) ?? 999).compareTo(
+        _apiDouble(b['distancia_km']) ?? 999,
       ),
     );
     return values;
@@ -559,89 +559,93 @@ class _AlertDetailSheet extends StatelessWidget {
             item['nombre_mascota'],
             item['raza'] ?? item['especie'],
           ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: petCream,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: accountBorder,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: AspectRatio(
-                aspectRatio: 16 / 10,
-                child: photo == null
-                    ? _PhotoFallback(color: sighted ? _yellow : _pink)
-                    : Image.network(
-                        photo,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            _PhotoFallback(color: sighted ? _yellow : _pink),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              title.isEmpty ? 'Mascota sin identificar' : title,
-              style: const TextStyle(
-                color: petInk,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              [
-                    sighted ? 'Avistada' : 'Reportada como perdida',
-                    item['referencia_lugar'],
-                    _distance(item['distancia_km']),
-                  ]
-                  .whereType<String>()
-                  .where((value) => value.isNotEmpty)
-                  .join(' · '),
-              style: const TextStyle(color: accountMuted, height: 1.35),
-            ),
-            if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
-                .trim()
-                .isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text(
-                '${item['senas_particulares'] ?? item['descripcion']}',
-                style: const TextStyle(color: accountMuted, height: 1.4),
-              ),
-            ],
-            if (onReportSighting != null) ...[
-              const SizedBox(height: 22),
-              FilledButton.icon(
-                onPressed: onReportSighting,
-                icon: const Icon(Icons.camera_alt_rounded),
-                label: const Text('Creo que encontré esta mascota'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(58),
-                  backgroundColor: petOrange,
-                  foregroundColor: petInk,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(19),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: petCream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accountBorder,
+                    borderRadius: BorderRadius.circular(99),
                   ),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
+              const SizedBox(height: 18),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: photo == null
+                      ? _PhotoFallback(color: sighted ? _yellow : _pink)
+                      : Image.network(
+                          photo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              _PhotoFallback(color: sighted ? _yellow : _pink),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title.isEmpty ? 'Mascota sin identificar' : title,
+                style: const TextStyle(
+                  color: petInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                [
+                      sighted ? 'Avistada' : 'Reportada como perdida',
+                      item['referencia_lugar'],
+                      _distance(item['distancia_km']),
+                    ]
+                    .whereType<String>()
+                    .where((value) => value.isNotEmpty)
+                    .join(' · '),
+                style: const TextStyle(color: accountMuted, height: 1.35),
+              ),
+              if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
+                  .trim()
+                  .isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(
+                  '${item['senas_particulares'] ?? item['descripcion']}',
+                  style: const TextStyle(color: accountMuted, height: 1.4),
+                ),
+              ],
+              if (onReportSighting != null) ...[
+                const SizedBox(height: 22),
+                FilledButton.icon(
+                  onPressed: onReportSighting,
+                  icon: const Icon(Icons.camera_alt_rounded),
+                  label: const Text('Creo que encontré esta mascota'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(58),
+                    backgroundColor: petOrange,
+                    foregroundColor: petInk,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -784,8 +788,8 @@ class _PhotoFallback extends StatelessWidget {
 }
 
 LatLng? _pointOf(Map<String, dynamic> item) {
-  final lat = (item['latitud_aproximada'] as num?)?.toDouble();
-  final lon = (item['longitud_aproximada'] as num?)?.toDouble();
+  final lat = _apiDouble(item['latitud_aproximada']);
+  final lon = _apiDouble(item['longitud_aproximada']);
   return lat == null || lon == null ? null : LatLng(lat, lon);
 }
 
@@ -794,12 +798,18 @@ String _keyOf(Map<String, dynamic> item) => item['tipo_alerta'] == 'avistado'
     : 'p:${item['id_reporte']}';
 
 String? _distance(Object? value) {
-  final distance = (value as num?)?.toDouble();
+  final distance = _apiDouble(value);
   if (distance == null) return null;
   return distance < 1
       ? '${(distance * 1000).round()} m'
       : '${distance.toStringAsFixed(1)} km';
 }
+
+double? _apiDouble(Object? value) => switch (value) {
+  num() => value.toDouble(),
+  String() => double.tryParse(value),
+  _ => null,
+};
 
 String _ago(Object? value) {
   final date = DateTime.tryParse('$value')?.toLocal();

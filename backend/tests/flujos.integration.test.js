@@ -24,6 +24,7 @@ import {
   actualizarUbicacionAlertas, obtenerUbicacionAlertas,
 } from '../src/services/alertaUbicacion.service.js';
 import { registrarDispositivoPush, eliminarDispositivoPush } from '../src/services/push.service.js';
+import { extraviosCercanos, avistamientosCercanos } from '../src/services/geografia.service.js';
 
 const sufijo = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const correos = [`prueba-a-${sufijo}@petid.local`, `prueba-b-${sufijo}@petid.local`];
@@ -122,7 +123,29 @@ try {
     color_principal: 'café', tamano: 'mediano',
     senas_particulares: 'mancha blanca', descripcion: 'Perro con mancha blanca',
   }, usuarios[1].id_usuario);
-  assert.equal(await modelos.Coincidencia.count({ where: { id_avistamiento: avistamiento.id_avistamiento } }), 1);
+  const filtrosCercanos = {
+    latitud: 15.7835,
+    longitud: -86.7918,
+    radio_km: 10,
+    pagina: 1,
+    limite: 20,
+    id_especie: null,
+  };
+  const [perdidosCercanos, avistadosCercanos] = await Promise.all([
+    extraviosCercanos(filtrosCercanos),
+    avistamientosCercanos(filtrosCercanos),
+  ]);
+  for (const item of [...perdidosCercanos.items, ...avistadosCercanos.items]) {
+    assert.equal(typeof item.distancia_km, 'number');
+    assert.equal(typeof item.latitud_aproximada, 'number');
+    assert.equal(typeof item.longitud_aproximada, 'number');
+  }
+  assert.equal(await modelos.Coincidencia.count({
+    where: {
+      id_avistamiento: avistamiento.id_avistamiento,
+      id_reporte: reporte.id_reporte,
+    },
+  }), 1);
   const coincidenciasDueno = await listarCoincidenciasReporte(
     reporte.id_reporte,
     usuarios[0].id_usuario

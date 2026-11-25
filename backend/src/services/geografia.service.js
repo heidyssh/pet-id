@@ -15,7 +15,16 @@ function parametros(filtros) {
 function empaquetar(rows, { pagina, limite }) {
   const total = Number(rows[0]?.total_resultados ?? 0);
   return {
-    items: rows.map(({ total_resultados, ...item }) => item),
+    items: rows.map(({ total_resultados, ...item }) => ({
+      ...item,
+      distancia_km: item.distancia_km == null ? null : Number(item.distancia_km),
+      latitud_aproximada: item.latitud_aproximada == null
+        ? null
+        : Number(item.latitud_aproximada),
+      longitud_aproximada: item.longitud_aproximada == null
+        ? null
+        : Number(item.longitud_aproximada),
+    })),
     paginacion: {
       pagina,
       limite,

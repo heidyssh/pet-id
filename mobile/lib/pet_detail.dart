@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -286,7 +287,12 @@ class _PetDetailPageState extends State<PetDetailPage> {
                   constraints: BoxConstraints(
                     minHeight: MediaQuery.sizeOf(context).height - 310,
                   ),
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 30),
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    28,
+                    20,
+                    30 + MediaQuery.viewPaddingOf(context).bottom,
+                  ),
                   decoration: const BoxDecoration(
                     color: petCream,
                     borderRadius: BorderRadius.vertical(
@@ -315,7 +321,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
                       ],
                       const SizedBox(height: 22),
                       Reveal(order: 1, child: _facts()),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 10),
                       Reveal(order: 2, child: _marks()),
                       const SizedBox(height: 26),
                       Reveal(order: 3, child: _clinical()),
@@ -341,34 +347,41 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
-  Widget _hero(List<String> photos) => ClipRRect(
-    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(34)),
-    child: SizedBox(
-      height: 330,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (photos.isEmpty)
-            const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
-                SizedBox(height: 12),
-                Text(
-                  'Foto de la mascota',
-                  style: TextStyle(
-                    color: petDarkOrange,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+  Widget _hero(List<String> photos) => SizedBox(
+    height: 330,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        if (photos.isEmpty)
+          const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
+              SizedBox(height: 12),
+              Text(
+                'Foto de la mascota',
+                style: TextStyle(
+                  color: petDarkOrange,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
-            )
-          else
-            PageView.builder(
-              itemCount: photos.length,
-              onPageChanged: (index) => setState(() => _photoIndex = index),
-              itemBuilder: (_, index) => Image.network(
+              ),
+            ],
+          )
+        else
+          PageView.builder(
+            physics: const BouncingScrollPhysics(),
+            pageSnapping: true,
+            itemCount: photos.length,
+            onPageChanged: (index) {
+              HapticFeedback.selectionClick();
+              setState(() => _photoIndex = index);
+            },
+            itemBuilder: (_, index) => AnimatedScale(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              scale: index == _photoIndex ? 1 : .97,
+              child: Image.network(
                 photos[index],
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => const ColoredBox(
@@ -383,7 +396,9 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 ),
               ),
             ),
-          const DecoratedBox(
+          ),
+        const IgnorePointer(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -392,30 +407,32 @@ class _PetDetailPageState extends State<PetDetailPage> {
               ),
             ),
           ),
-          Positioned(
-            top: 18,
-            left: 18,
-            right: 18,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _OfflineBadge(
-                    key: ValueKey((_offlineReady, _loading)),
-                    ready: _offlineReady,
-                    loading: _loading,
-                  ),
+        ),
+        Positioned(
+          top: 18,
+          left: 18,
+          right: 18,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _OfflineBadge(
+                  key: ValueKey((_offlineReady, _loading)),
+                  ready: _offlineReady,
+                  loading: _loading,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (photos.length > 1)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 18,
+        ),
+        if (photos.length > 1)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 18,
+            child: IgnorePointer(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -435,8 +452,8 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 ],
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     ),
   );
 
@@ -677,7 +694,7 @@ class _EditPetSheetState extends State<_EditPetSheet> {
   @override
   Widget build(BuildContext context) => AnimatedPadding(
     duration: const Duration(milliseconds: 220),
-    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
     child: Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * .9,
@@ -691,6 +708,7 @@ class _EditPetSheetState extends State<_EditPetSheet> {
         key: _form,
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -912,7 +930,7 @@ class _HealthRecordSheetState extends State<_HealthRecordSheet> {
   @override
   Widget build(BuildContext context) => AnimatedPadding(
     duration: const Duration(milliseconds: 220),
-    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
     child: Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * .88,
@@ -925,6 +943,8 @@ class _HealthRecordSheetState extends State<_HealthRecordSheet> {
       child: Form(
         key: _form,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1171,12 +1191,7 @@ class _LostReportSheetState extends State<_LostReportSheet> {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      22,
-      12,
-      22,
-      20 + MediaQuery.viewInsetsOf(context).bottom,
-    ),
+    padding: EdgeInsets.fromLTRB(22, 12, 22, 20 + petSheetBottomInset(context)),
     child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1615,79 +1630,85 @@ class _MatchesSheetState extends State<_MatchesSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: BoxConstraints(
-      maxHeight: MediaQuery.sizeOf(context).height * .88,
-    ),
-    decoration: const BoxDecoration(
-      color: petCream,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-    ),
-    child: Column(
-      children: [
-        const SizedBox(height: 12),
-        Container(
-          width: 48,
-          height: 5,
-          decoration: BoxDecoration(
-            color: accountBorder,
-            borderRadius: BorderRadius.circular(99),
+  Widget build(BuildContext context) => AnimatedPadding(
+    duration: const Duration(milliseconds: 220),
+    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .88,
+      ),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 48,
+            height: 5,
+            decoration: BoxDecoration(
+              color: accountBorder,
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 18, 20, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Posibles coincidencias',
-              style: TextStyle(
-                color: petInk,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 18, 20, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Posibles coincidencias',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
-          child: Text(
-            'El reconocimiento orienta la búsqueda. Confirma personalmente antes de dar por encontrada a tu mascota.',
-            style: TextStyle(color: accountMuted, height: 1.35),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
+            child: Text(
+              'El reconocimiento orienta la búsqueda. Confirma personalmente antes de dar por encontrada a tu mascota.',
+              style: TextStyle(color: accountMuted, height: 1.35),
+            ),
           ),
-        ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator(color: petOrange))
-              : _error != null
-              ? Center(
-                  child: _MapLikeMessage(message: _error!, onRetry: _load),
-                )
-              : _items.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Text(
-                      'Todavía no hay avistamientos compatibles. Puedes volver a revisar más tarde.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: accountMuted, height: 1.4),
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: petOrange),
+                  )
+                : _error != null
+                ? Center(
+                    child: _MapLikeMessage(message: _error!, onRetry: _load),
+                  )
+                : _items.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Text(
+                        'Todavía no hay avistamientos compatibles. Puedes volver a revisar más tarde.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: accountMuted, height: 1.4),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) => _MatchCard(
+                      item: _items[index],
+                      busy: _updating.contains(
+                        '${_items[index]['id_coincidencia']}',
+                      ),
+                      onConfirm: () => _review(_items[index], 'confirmada'),
+                      onDiscard: () => _review(_items[index], 'descartada'),
                     ),
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                  itemCount: _items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, index) => _MatchCard(
-                    item: _items[index],
-                    busy: _updating.contains(
-                      '${_items[index]['id_coincidencia']}',
-                    ),
-                    onConfirm: () => _review(_items[index], 'confirmada'),
-                    onDiscard: () => _review(_items[index], 'descartada'),
-                  ),
-                ),
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
   );
 }

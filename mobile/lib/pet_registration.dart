@@ -124,75 +124,81 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
                 return query.isEmpty ||
                     option.name.toLowerCase().contains(query.toLowerCase());
               }).toList();
-          return FractionallySizedBox(
-            heightFactor: .78,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: accountBorder,
-                        borderRadius: BorderRadius.circular(99),
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 220),
+            padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+            child: FractionallySizedBox(
+              heightFactor: .78,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: accountBorder,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Selecciona la raza',
-                    style: TextStyle(
-                      color: petInk,
-                      fontSize: 23,
-                      fontWeight: FontWeight.w900,
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Selecciona la raza',
+                      style: TextStyle(
+                        color: petInk,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: search,
-                    autofocus: true,
-                    decoration: accountInput(
-                      'Buscar raza',
-                    ).copyWith(prefixIcon: const Icon(Icons.search_rounded)),
-                    onChanged: (value) =>
-                        setSheetState(() => query = value.trim()),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: options.isEmpty
-                        ? const Center(child: Text('No encontramos esa raza.'))
-                        : ListView.separated(
-                            keyboardDismissBehavior:
-                                ScrollViewKeyboardDismissBehavior.onDrag,
-                            itemCount: options.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (_, index) {
-                              final option = options[index];
-                              final active =
-                                  _breedChosen && option.id == _breedId;
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                title: Text(option.name),
-                                trailing: active
-                                    ? const Icon(
-                                        Icons.check_circle_rounded,
-                                        color: Color(0xFF00A985),
-                                      )
-                                    : null,
-                                onTap: () =>
-                                    Navigator.pop(sheetContext, option),
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: search,
+                      autofocus: true,
+                      decoration: accountInput(
+                        'Buscar raza',
+                      ).copyWith(prefixIcon: const Icon(Icons.search_rounded)),
+                      onChanged: (value) =>
+                          setSheetState(() => query = value.trim()),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: options.isEmpty
+                          ? const Center(
+                              child: Text('No encontramos esa raza.'),
+                            )
+                          : ListView.separated(
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              itemCount: options.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (_, index) {
+                                final option = options[index];
+                                final active =
+                                    _breedChosen && option.id == _breedId;
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  title: Text(option.name),
+                                  trailing: active
+                                      ? const Icon(
+                                          Icons.check_circle_rounded,
+                                          color: Color(0xFF00A985),
+                                        )
+                                      : null,
+                                  onTap: () =>
+                                      Navigator.pop(sheetContext, option),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

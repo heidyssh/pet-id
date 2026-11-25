@@ -41,7 +41,12 @@ class AppSelectField<T> extends StatelessWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * .72,
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          16 + petSheetBottomInset(context),
+        ),
         decoration: const BoxDecoration(
           color: petCream,
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
