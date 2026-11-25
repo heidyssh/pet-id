@@ -874,15 +874,18 @@ class _SectionTitle extends StatelessWidget {
         onPressed: onAction,
         style: TextButton.styleFrom(
           foregroundColor: petDarkOrange,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          minimumSize: const Size(0, 38),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: const StadiumBorder(),
         ),
-        child: Text(
-          action,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            decoration: TextDecoration.underline,
-            decorationColor: petDarkOrange,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(action, style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(width: 2),
+            const Icon(Icons.chevron_right_rounded, size: 19),
+          ],
         ),
       ),
     ],
@@ -1908,22 +1911,36 @@ class _RoleBadge extends StatelessWidget {
   const _RoleBadge();
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: const Color(0xFFDDF5EE),
-      borderRadius: BorderRadius.circular(99),
-      border: Border.all(color: const Color(0xFF6EDFC8)),
-    ),
-    child: const Text(
-      'Cuenta ciudadana',
-      style: TextStyle(
-        color: Color(0xFF08735F),
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final roles =
+        (context.watch<Session>().user?['roles'] as List?)
+            ?.map((role) => '$role')
+            .toSet() ??
+        const <String>{};
+    final label = roles.contains('administrador')
+        ? 'Administración'
+        : roles.contains('personal_veterinario')
+        ? 'Personal veterinario'
+        : roles.contains('personal_refugio')
+        ? 'Personal de refugio'
+        : 'Cuenta ciudadana';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDDF5EE),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0xFF6EDFC8)),
       ),
-    ),
-  );
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF08735F),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileStat extends StatelessWidget {

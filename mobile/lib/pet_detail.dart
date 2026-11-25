@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
+import 'app_select.dart';
 import 'lost_report.dart';
 import 'motion.dart';
 import 'welcome.dart';
@@ -34,6 +35,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
   bool _changed = false;
   String? _error;
   String? _historyError;
+  Map<String, dynamic>? _activeReport;
   int _photoIndex = 0;
 
   String get _id => '${_pet['id_mascota']}';
@@ -99,6 +101,28 @@ class _PetDetailPageState extends State<PetDetailPage> {
       }
     }
 
+    try {
+      final response = await session.authRequest(
+        'GET',
+        '/extravios/mios?pagina=1&limite=50',
+      );
+      final reports = _maps((response['data'] as Map?)?['reportes']);
+      if (mounted) {
+        Map<String, dynamic>? active;
+        for (final item in reports) {
+          if ('${item['id_mascota']}' == _id && item['estado'] == 'activo') {
+            active = item;
+            break;
+          }
+        }
+        setState(() {
+          _activeReport = active;
+        });
+      }
+    } catch (_) {
+      // La ficha sigue siendo utilizable aunque no se pueda consultar el reporte.
+    }
+
     if (mounted && _offlineReady) {
       try {
         await _storage.write(
@@ -125,6 +149,78 @@ class _PetDetailPageState extends State<PetDetailPage> {
       context,
       'Alerta de ${_pet['nombre']} enviada.',
       type: PetToastType.success,
+    );
+  }
+
+  Future<void> _resolveLost() async {
+    final report = _activeReport;
+    if (report == null) {
+      showPetToast(
+        context,
+        'No pudimos localizar el reporte activo. Actualiza la ficha e inténtalo de nuevo.',
+        type: PetToastType.warning,
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Ya está en casa?'),
+        content: Text(
+          'Cerraremos la alerta de ${_pet['nombre']} y dejará de aparecer como perdida.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sí, está en casa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await context.read<Session>().authRequest(
+        'PATCH',
+        '/extravios/${report['id_reporte']}/resolver',
+      );
+      if (!mounted) return;
+      _changed = true;
+      setState(() {
+        _pet = {..._pet, 'estado': 'a_salvo'};
+        _activeReport = null;
+      });
+      showPetToast(
+        context,
+        '¡Qué alegría! La alerta fue cerrada.',
+        type: PetToastType.success,
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      showPetToast(context, _message(error), type: PetToastType.error);
+    }
+  }
+
+  Future<void> _showMatches() async {
+    final report = _activeReport;
+    if (report == null) {
+      showPetToast(
+        context,
+        'Actualiza la ficha para consultar las coincidencias.',
+        type: PetToastType.warning,
+      );
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MatchesSheet(reportId: '${report['id_reporte']}'),
     );
   }
 
@@ -229,7 +325,9 @@ class _PetDetailPageState extends State<PetDetailPage> {
                         child: _LostButton(
                           name: '${_pet['nombre'] ?? 'esta mascota'}',
                           lost: lost,
-                          onPressed: lost ? null : _reportLost,
+                          onReport: lost ? null : _reportLost,
+                          onMatches: lost ? _showMatches : null,
+                          onResolved: lost ? _resolveLost : null,
                         ),
                       ),
                     ],
@@ -638,22 +736,15 @@ class _EditPetSheetState extends State<_EditPetSheet> {
                   Expanded(
                     child: AccountField(
                       'Sexo',
-                      DropdownButtonFormField<String>(
+                      AppSelectField<String>(
                         value: _sex,
-                        decoration: accountInput('Seleccionar'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'hembra',
-                            child: Text('Hembra'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'macho',
-                            child: Text('Macho'),
-                          ),
+                        title: 'Sexo',
+                        options: const [
+                          AppSelectOption('hembra', 'Hembra'),
+                          AppSelectOption('macho', 'Macho'),
                         ],
-                        onChanged: _busy
-                            ? null
-                            : (value) => setState(() => _sex = value),
+                        enabled: !_busy,
+                        onChanged: (value) => setState(() => _sex = value),
                       ),
                     ),
                   ),
@@ -661,26 +752,16 @@ class _EditPetSheetState extends State<_EditPetSheet> {
                   Expanded(
                     child: AccountField(
                       'Tamaño',
-                      DropdownButtonFormField<String>(
+                      AppSelectField<String>(
                         value: _size,
-                        decoration: accountInput('Seleccionar'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'pequeno',
-                            child: Text('Pequeño'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'mediano',
-                            child: Text('Mediano'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'grande',
-                            child: Text('Grande'),
-                          ),
+                        title: 'Tamaño',
+                        options: const [
+                          AppSelectOption('pequeno', 'Pequeño'),
+                          AppSelectOption('mediano', 'Mediano'),
+                          AppSelectOption('grande', 'Grande'),
                         ],
-                        onChanged: _busy
-                            ? null
-                            : (value) => setState(() => _size = value),
+                        enabled: !_busy,
+                        onChanged: (value) => setState(() => _size = value),
                       ),
                     ),
                   ),
@@ -874,19 +955,25 @@ class _HealthRecordSheetState extends State<_HealthRecordSheet> {
               const SizedBox(height: 18),
               AccountField(
                 'Tipo de registro',
-                DropdownButtonFormField<String>(
+                AppSelectField<String>(
                   value: _type,
-                  decoration: accountInput('Tipo'),
-                  items: const [
-                    DropdownMenuItem(value: 'vacuna', child: Text('Vacuna')),
-                    DropdownMenuItem(
-                      value: 'desparasitacion',
-                      child: Text('Desparasitación'),
+                  title: 'Tipo de registro',
+                  options: const [
+                    AppSelectOption(
+                      'vacuna',
+                      'Vacuna',
+                      icon: Icons.vaccines_outlined,
+                    ),
+                    AppSelectOption(
+                      'desparasitacion',
+                      'Desparasitación',
+                      icon: Icons.medication_outlined,
                     ),
                   ],
-                  onChanged: _busy
-                      ? null
-                      : (value) => setState(() => _type = value!),
+                  enabled: !_busy,
+                  onChanged: (value) {
+                    if (value != null) setState(() => _type = value);
+                  },
                 ),
               ),
               AccountField(
@@ -1241,7 +1328,7 @@ class _OfflineBadge extends StatelessWidget {
           ),
         const SizedBox(width: 7),
         Text(
-          ready ? 'Disponible sin conexión' : 'Sincronizando',
+          ready ? 'Datos guardados' : 'Sincronizando',
           style: TextStyle(
             color: ready ? _mintDark : accountMuted,
             fontWeight: FontWeight.w800,
@@ -1395,32 +1482,343 @@ class _LostButton extends StatelessWidget {
   const _LostButton({
     required this.name,
     required this.lost,
-    required this.onPressed,
+    required this.onReport,
+    required this.onMatches,
+    required this.onResolved,
   });
   final String name;
   final bool lost;
-  final VoidCallback? onPressed;
+  final VoidCallback? onReport;
+  final VoidCallback? onMatches;
+  final VoidCallback? onResolved;
   @override
-  Widget build(BuildContext context) => Pressable(
-    child: FilledButton.icon(
-      onPressed: onPressed,
-      icon: Icon(
-        lost ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded,
+  Widget build(BuildContext context) => lost
+      ? Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: onMatches,
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text('Revisar posibles coincidencias'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(58),
+                foregroundColor: petInk,
+                backgroundColor: _pink,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: onResolved,
+              icon: const Icon(Icons.home_rounded),
+              label: Text('Marcar a $name como encontrada'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                foregroundColor: _mintDark,
+                side: const BorderSide(color: _mint, width: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        )
+      : Pressable(
+          child: FilledButton.icon(
+            onPressed: onReport,
+            icon: const Icon(Icons.warning_amber_rounded),
+            label: Text('Reportar a $name como perdida'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(62),
+              foregroundColor: petInk,
+              backgroundColor: _pink,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        );
+}
+
+class _MatchesSheet extends StatefulWidget {
+  const _MatchesSheet({required this.reportId});
+  final String reportId;
+
+  @override
+  State<_MatchesSheet> createState() => _MatchesSheetState();
+}
+
+class _MatchesSheetState extends State<_MatchesSheet> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _items = const [];
+  final Set<String> _updating = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await context.read<Session>().authRequest(
+        'GET',
+        '/coincidencias/reportes/${widget.reportId}',
+      );
+      if (!mounted) return;
+      setState(() => _items = _maps((response['data'] as Map?)?['items']));
+    } catch (error) {
+      if (mounted) setState(() => _error = _message(error));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _review(Map<String, dynamic> item, String status) async {
+    final id = '${item['id_coincidencia']}';
+    setState(() => _updating.add(id));
+    try {
+      await context.read<Session>().authRequest(
+        'PATCH',
+        '/coincidencias/$id/revision',
+        body: {'estado_revision': status},
+      );
+      if (!mounted) return;
+      setState(() => item['estado_revision'] = status);
+      showPetToast(
+        context,
+        status == 'confirmada'
+            ? 'Coincidencia confirmada. Ya puedes contactar usando el reporte.'
+            : 'Coincidencia descartada.',
+        type: status == 'confirmada' ? PetToastType.success : PetToastType.info,
+      );
+    } catch (error) {
+      if (mounted) {
+        showPetToast(context, _message(error), type: PetToastType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _updating.remove(id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * .88,
+    ),
+    decoration: const BoxDecoration(
+      color: petCream,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    child: Column(
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          width: 48,
+          height: 5,
+          decoration: BoxDecoration(
+            color: accountBorder,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 18, 20, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Posibles coincidencias',
+              style: TextStyle(
+                color: petInk,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
+          child: Text(
+            'El reconocimiento orienta la búsqueda. Confirma personalmente antes de dar por encontrada a tu mascota.',
+            style: TextStyle(color: accountMuted, height: 1.35),
+          ),
+        ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: petOrange))
+              : _error != null
+              ? Center(
+                  child: _MapLikeMessage(message: _error!, onRetry: _load),
+                )
+              : _items.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Text(
+                      'Todavía no hay avistamientos compatibles. Puedes volver a revisar más tarde.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: accountMuted, height: 1.4),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                  itemCount: _items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) => _MatchCard(
+                    item: _items[index],
+                    busy: _updating.contains(
+                      '${_items[index]['id_coincidencia']}',
+                    ),
+                    onConfirm: () => _review(_items[index], 'confirmada'),
+                    onDiscard: () => _review(_items[index], 'descartada'),
+                  ),
+                ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MatchCard extends StatelessWidget {
+  const _MatchCard({
+    required this.item,
+    required this.busy,
+    required this.onConfirm,
+    required this.onDiscard,
+  });
+  final Map<String, dynamic> item;
+  final bool busy;
+  final VoidCallback onConfirm;
+  final VoidCallback onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    final sighting = item['avistamiento'] as Map? ?? const {};
+    final photos = _maps(sighting['fotos']);
+    final rawPhoto =
+        photos.firstOrNull?['url_recorte'] ??
+        photos.firstOrNull?['url_original'];
+    final photo = context.read<PetIdApi>().imageUrl(rawPhoto);
+    final score = ((item['puntuacion'] as num?)?.toDouble() ?? 0) * 100;
+    final status = '${item['estado_revision'] ?? 'pendiente'}';
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _box(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox.square(
+                  dimension: 78,
+                  child: photo == null
+                      ? const ColoredBox(
+                          color: Color(0xFFFFE5D2),
+                          child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                        )
+                      : Image.network(photo, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${sighting['especie']?['nombre'] ?? 'Mascota avistada'}',
+                      style: const TextStyle(
+                        color: petInk,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${sighting['referencia_lugar'] ?? 'Ubicación compartida'}',
+                      style: const TextStyle(color: accountMuted),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '${score.round()}% de compatibilidad',
+                      style: const TextStyle(
+                        color: petDarkOrange,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if ('${sighting['descripcion'] ?? ''}'.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${sighting['descripcion']}',
+              style: const TextStyle(color: accountMuted, height: 1.35),
+            ),
+          ],
+          const SizedBox(height: 13),
+          if (status == 'pendiente')
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: busy ? null : onDiscard,
+                    child: const Text('Descartar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: busy ? null : onConfirm,
+                    child: Text(busy ? 'Guardando...' : 'Confirmar'),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              status == 'confirmada' ? 'Coincidencia confirmada' : 'Descartada',
+              style: TextStyle(
+                color: status == 'confirmada' ? _mintDark : accountMuted,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+        ],
       ),
-      label: Text(
-        lost
-            ? '$name ya está reportada como perdida'
-            : 'Reportar a $name como perdida',
-      ),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(62),
-        foregroundColor: petInk,
-        backgroundColor: lost ? accountBorder : _pink,
-        disabledBackgroundColor: accountBorder,
-        disabledForegroundColor: accountMuted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-      ),
+    );
+  }
+}
+
+class _MapLikeMessage extends StatelessWidget {
+  const _MapLikeMessage({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 10),
+        TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+      ],
     ),
   );
 }
@@ -1507,3 +1905,8 @@ String _date(DateTime date) =>
 
 String _dateOnly(DateTime date) =>
     '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+String _message(Object error) => switch (error) {
+  ApiError() => error.message,
+  _ => 'No se pudo completar la acción. Inténtalo de nuevo.',
+};

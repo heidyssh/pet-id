@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
+import 'entry_forms.dart';
 import 'motion.dart';
 import 'welcome.dart';
 
@@ -110,6 +111,33 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     setState(() => _selected = _keyOf(item));
     final point = _pointOf(item);
     if (point != null) _map.move(point, 16);
+  }
+
+  Future<void> _openAlert(Map<String, dynamic> item) async {
+    _select(item);
+    final sighted = item['tipo_alerta'] == 'avistado';
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _AlertDetailSheet(
+        item: item,
+        onReportSighting: sighted
+            ? null
+            : () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SightingForm(
+                      signedIn: true,
+                      startWithCamera: true,
+                    ),
+                  ),
+                );
+              },
+      ),
+    );
   }
 
   @override
@@ -394,7 +422,7 @@ class _NearbyMapPageState extends State<NearbyMapPage>
             child: _AlertCard(
               item: _items[index],
               selected: _selected == _keyOf(_items[index]),
-              onTap: () => _select(_items[index]),
+              onTap: () => _openAlert(_items[index]),
             ),
           ),
           if (index != _items.length - 1) const SizedBox(height: 10),
@@ -507,6 +535,113 @@ class _AlertCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AlertDetailSheet extends StatelessWidget {
+  const _AlertDetailSheet({required this.item, this.onReportSighting});
+  final Map<String, dynamic> item;
+  final VoidCallback? onReportSighting;
+
+  @override
+  Widget build(BuildContext context) {
+    final sighted = item['tipo_alerta'] == 'avistado';
+    final photo = context.read<PetIdApi>().imageUrl(item['foto']);
+    final title = sighted
+        ? [
+            item['especie'],
+            item['color_principal'],
+          ].whereType<String>().where((value) => value.isNotEmpty).join(' · ')
+        : [
+            item['nombre_mascota'],
+            item['raza'] ?? item['especie'],
+          ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: accountBorder,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: AspectRatio(
+                aspectRatio: 16 / 10,
+                child: photo == null
+                    ? _PhotoFallback(color: sighted ? _yellow : _pink)
+                    : Image.network(
+                        photo,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            _PhotoFallback(color: sighted ? _yellow : _pink),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title.isEmpty ? 'Mascota sin identificar' : title,
+              style: const TextStyle(
+                color: petInk,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              [
+                    sighted ? 'Avistada' : 'Reportada como perdida',
+                    item['referencia_lugar'],
+                    _distance(item['distancia_km']),
+                  ]
+                  .whereType<String>()
+                  .where((value) => value.isNotEmpty)
+                  .join(' · '),
+              style: const TextStyle(color: accountMuted, height: 1.35),
+            ),
+            if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
+                .trim()
+                .isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                '${item['senas_particulares'] ?? item['descripcion']}',
+                style: const TextStyle(color: accountMuted, height: 1.4),
+              ),
+            ],
+            if (onReportSighting != null) ...[
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: onReportSighting,
+                icon: const Icon(Icons.camera_alt_rounded),
+                label: const Text('Creo que encontré esta mascota'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(58),
+                  backgroundColor: petOrange,
+                  foregroundColor: petInk,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(19),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

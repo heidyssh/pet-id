@@ -296,13 +296,17 @@ class Session extends ChangeNotifier {
     Object petId,
     XFile photo, {
     required bool main,
+    bool requireRecognition = false,
   }) async {
     Future<Map<String, dynamic>> send() => api.request(
       'POST',
       '/mascotas/$petId/fotos',
       token: _access,
       photo: photo,
-      multipartFields: {'es_principal': '$main'},
+      multipartFields: {
+        'es_principal': '$main',
+        'requiere_vector': '$requireRecognition',
+      },
     );
     try {
       return await send();
@@ -316,17 +320,14 @@ class Session extends ChangeNotifier {
   Future<void> logout() async {
     try {
       await api.request('POST', '/sesiones/cerrar', token: _access);
-    } on ApiError catch (error) {
-      if (error.status != 401) rethrow;
-      await restore();
-      if (restoreError != null) throw ApiError(restoreError!);
-      if (user != null) {
-        await api.request('POST', '/sesiones/cerrar', token: _access);
-      }
+    } catch (_) {
+      // Cerrar sesión localmente nunca debe depender de la red. El token
+      // expirará en el servidor aunque el dispositivo esté sin conexión.
+    } finally {
+      await _storage.delete(key: _key);
+      user = null;
+      _access = null;
+      notifyListeners();
     }
-    await _storage.delete(key: _key);
-    user = null;
-    _access = null;
-    notifyListeners();
   }
 }

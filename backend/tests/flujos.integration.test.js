@@ -140,6 +140,20 @@ try {
   );
 
   const buffer = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#8b5a2b' } }).png().toBuffer();
+  await assert.rejects(
+    () => agregarFotoMascota(
+      mascota.id_mascota,
+      usuarios[0].id_usuario,
+      { buffer },
+      true,
+      true
+    ),
+    /proveedor de detección visual no está configurado/i
+  );
+  assert.equal(
+    await modelos.FotoMascota.count({ where: { id_mascota: mascota.id_mascota } }),
+    0
+  );
   const foto = await agregarFotoMascota(mascota.id_mascota, usuarios[0].id_usuario, { buffer }, true);
   assert.ok(
     ['proveedor_no_configurado', 'animal_no_detectado'].includes(

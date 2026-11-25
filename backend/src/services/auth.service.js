@@ -158,7 +158,7 @@ export async function iniciarSesion(datos, agenteUsuario = '') {
   );
 
   return {
-    usuario: datosPublicos(usuario),
+    usuario: await obtenerPerfil(usuario.id_usuario),
     ...tokens,
   };
 }
@@ -207,5 +207,5 @@ export async function actualizarPerfil(idUsuario, datos) {
     }
     throw error;
   }
-  return datosPublicos(usuario);
+  return obtenerPerfil(usuario.id_usuario);
 }

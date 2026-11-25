@@ -51,8 +51,12 @@ async function procesar(buffer, { estricto = false } = {}) {
     try {
       deteccion = await detectarAnimal(normalizada);
     } catch (error) {
-      if (!(error instanceof AppError) || error.statusCode < 500) throw error;
-      if (estricto) throw error;
+      if (error instanceof AppError && error.statusCode < 500) throw error;
+      if (estricto) {
+        throw error instanceof AppError
+          ? error
+          : new AppError('El reconocimiento visual no está disponible en este momento', 503);
+      }
       errorProveedor = error;
     }
   } else if (estricto) {
@@ -79,7 +83,11 @@ async function procesar(buffer, { estricto = false } = {}) {
     try {
       vector = await generarVectorVisual(recorte);
     } catch (error) {
-      if (estricto) throw error;
+      if (estricto) {
+        throw error instanceof AppError
+          ? error
+          : new AppError('No se pudo preparar la foto para reconocimiento', 503);
+      }
       errorEmbedding = error;
     }
   }
@@ -94,7 +102,13 @@ export async function prepararConsultaVisual(archivo) {
   return procesar(archivo.buffer, { estricto: true });
 }
 
-export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrincipal) {
+export async function agregarFotoMascota(
+  idMascota,
+  idUsuario,
+  archivo,
+  esPrincipal,
+  requiereVector = false
+) {
   if (!archivo) throw new AppError('Debe enviar una fotografía', 400);
 
   const mascota = await Mascota.findOne({
@@ -104,7 +118,7 @@ export async function agregarFotoMascota(idMascota, idUsuario, archivo, esPrinci
 
   const {
     normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
-  } = await procesar(archivo.buffer);
+  } = await procesar(archivo.buffer, { estricto: requiereVector });
   const original = await guardarImagen(normalizada, 'mascota');
   let recortada;
 

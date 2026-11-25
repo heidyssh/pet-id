@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
+import 'app_select.dart';
 import 'location_picker.dart';
 import 'motion.dart';
 import 'pet_camera.dart';
@@ -17,7 +18,8 @@ import 'welcome.dart';
 
 String _errorMessage(Object error) => switch (error) {
   ApiError() => error.message,
-  TimeoutException() => 'PetID tardó en responder. Verifica la conexión.',
+  TimeoutException() =>
+    'No pudimos conectar con PetID. Comprueba que el celular y la computadora estén en la misma red.',
   PlatformException() => 'No se pudo acceder a la cámara o galería.',
   _ =>
     'No se pudo completar la acción. Verifica la conexión e inténtalo de nuevo.',
@@ -90,14 +92,8 @@ class _PasswordRequirements extends StatelessWidget {
           return Semantics(
             liveRegion: true,
             label: 'Requisitos de contraseña',
-            child: Container(
-              margin: const EdgeInsets.only(top: 2, bottom: 18),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: accountBorder, width: 2),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 2, 4, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -128,12 +124,11 @@ class _PasswordRequirementChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground =
-        !started
-            ? accountMuted
-            : valid
-            ? const Color(0xFF176D61)
-            : const Color(0xFFB42318);
+    final foreground = !started
+        ? accountMuted
+        : valid
+        ? const Color(0xFF176D61)
+        : const Color(0xFFB42318);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
@@ -142,9 +137,8 @@ class _PasswordRequirementChip extends StatelessWidget {
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
-            transitionBuilder:
-                (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
             child: Icon(
               !started
                   ? Icons.circle_outlined
@@ -173,6 +167,60 @@ class _PasswordRequirementChip extends StatelessWidget {
   }
 }
 
+class _RegistrationSectionHeader extends StatelessWidget {
+  const _RegistrationSectionHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF0E5),
+      borderRadius: BorderRadius.circular(17),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(icon, color: petDarkOrange, size: 22),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: petInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(color: accountMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 abstract class _FormState<T extends StatefulWidget> extends State<T> {
   final form = GlobalKey<FormState>();
   bool busy = false;
@@ -190,7 +238,13 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
       if (mounted) {
         final message = _errorMessage(exception);
         setState(() => error = null);
-        showPetToast(context, message, type: PetToastType.error);
+        showPetToast(
+          context,
+          message,
+          type: exception is TimeoutException
+              ? PetToastType.warning
+              : PetToastType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -241,15 +295,14 @@ abstract class _FormState<T extends StatefulWidget> extends State<T> {
                       order: fields.length < 10 ? fields.length : 10,
                       child: Pressable(
                         child: FilledButton(
-                          onPressed:
-                              busy
-                                  ? null
-                                  : () {
-                                    HapticFeedback.lightImpact();
-                                    if (!form.currentState!.validate()) return;
-                                    FocusScope.of(context).unfocus();
-                                    submit();
-                                  },
+                          onPressed: busy
+                              ? null
+                              : () {
+                                  HapticFeedback.lightImpact();
+                                  if (!form.currentState!.validate()) return;
+                                  FocusScope.of(context).unfocus();
+                                  submit();
+                                },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Text(busy ? 'Un momento…' : submitLabel),
@@ -293,8 +346,9 @@ class _AccountFormState extends _FormState<AccountForm> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   bool _hide = true;
+  bool _hideConfirmation = true;
   bool _organization = false;
-  String _organizationType = 'veterinaria';
+  String? _organizationType;
   bool _locationAlerts = false;
 
   @override
@@ -332,10 +386,11 @@ class _AccountFormState extends _FormState<AccountForm> {
           if (_organization)
             'organizacion': {
               'nombre': _organizationName.text.trim(),
-              'tipo': _organizationType,
+              'tipo': _organizationType!,
               'telefono': phone,
             },
-          if (location != null) 'alertas_ubicacion': {'ubicacion': location},
+          if (location != null)
+            'alertas_ubicacion': {'ubicacion': location, 'radio_km': 2},
         },
       );
       if (!mounted) return;
@@ -435,10 +490,9 @@ class _AccountFormState extends _FormState<AccountForm> {
     final text = _sanitizeNameInput(next.text);
     if (text == next.text) return next;
 
-    int offset(int index) =>
-        index < 0
-            ? text.length
-            : _sanitizeNameInput(next.text.substring(0, index)).length;
+    int offset(int index) => index < 0
+        ? text.length
+        : _sanitizeNameInput(next.text.substring(0, index)).length;
 
     return next.copyWith(
       text: text,
@@ -458,42 +512,40 @@ class _AccountFormState extends _FormState<AccountForm> {
     label,
     ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
-      builder:
-          (context, value, _) => TextFormField(
-            controller: controller,
-            enabled: !busy,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.next,
-            inputFormatters: [
-              TextInputFormatter.withFunction(_formatNameInput),
-            ],
-            decoration: accountInput(hint).copyWith(
-              counterText:
-                  '${_letterPattern.allMatches(value.text).length}/$_maxNameLetters',
-              counterStyle: const TextStyle(color: accountMuted),
-            ),
-            validator: (value) {
-              final name = value?.trim() ?? '';
-              if (name.isEmpty) return 'Completa este campo.';
-              if (!_namePattern.hasMatch(name)) {
-                return 'Usa solo letras y un espacio entre palabras.';
-              }
-              final letters = _letterPattern.allMatches(name).length;
-              if (letters < 2) return 'Escribe al menos dos letras.';
-              if (letters > _maxNameLetters) {
-                return 'Escribe un máximo de $_maxNameLetters letras.';
-              }
-              return null;
-            },
-          ),
+      builder: (context, value, _) => TextFormField(
+        controller: controller,
+        enabled: !busy,
+        textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.next,
+        inputFormatters: [TextInputFormatter.withFunction(_formatNameInput)],
+        decoration: accountInput(hint).copyWith(
+          counterText:
+              '${_letterPattern.allMatches(value.text).length}/$_maxNameLetters',
+          counterStyle: const TextStyle(color: accountMuted),
+        ),
+        validator: (value) {
+          final name = value?.trim() ?? '';
+          if (name.isEmpty) return 'Completa este campo.';
+          if (!_namePattern.hasMatch(name)) {
+            return 'Usa solo letras y un espacio entre palabras.';
+          }
+          final letters = _letterPattern.allMatches(name).length;
+          if (letters < 2) return 'Escribe al menos dos letras.';
+          if (letters > _maxNameLetters) {
+            return 'Escribe un máximo de $_maxNameLetters letras.';
+          }
+          return null;
+        },
+      ),
     ),
   );
 
   Widget _accountType(String label, {required bool organization}) {
     final selected = _organization == organization;
     return OutlinedButton(
-      onPressed:
-          busy ? null : () => setState(() => _organization = organization),
+      onPressed: busy
+          ? null
+          : () => setState(() => _organization = organization),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(60),
         foregroundColor: selected ? petInk : accountMuted,
@@ -519,10 +571,9 @@ class _AccountFormState extends _FormState<AccountForm> {
     final submitLabel = register ? 'Crear cuenta' : 'Iniciar sesión';
     return AccountLayout(
       title: register ? 'Crea tu cuenta' : '¡Hola de nuevo!',
-      subtitle:
-          register
-              ? 'Así podrás registrar mascotas y recibir alertas cerca de ti.'
-              : 'Inicia sesión para ver a tus mascotas y las alertas de tu zona.',
+      subtitle: register
+          ? 'Así podrás registrar mascotas y recibir alertas cerca de ti.'
+          : 'Inicia sesión para ver a tus mascotas y las alertas de tu zona.',
       busy: busy,
       footer: Wrap(
         alignment: WrapAlignment.center,
@@ -565,33 +616,37 @@ class _AccountFormState extends _FormState<AccountForm> {
                     ],
                   ),
                   const SizedBox(height: 22),
-                  _nameField(_name, 'Nombres', 'Ej. María José'),
-                  _nameField(_surname, 'Apellidos', 'Ej. Pérez López'),
                   if (_organization) ...[
+                    const _RegistrationSectionHeader(
+                      icon: Icons.business_rounded,
+                      title: 'Datos de la organización',
+                      subtitle: 'Información de la veterinaria o refugio',
+                    ),
+                    const SizedBox(height: 16),
                     AccountField(
                       'Tipo de organización',
-                      DropdownButtonFormField<String>(
+                      AppSelectField<String>(
                         value: _organizationType,
-                        isExpanded: true,
-                        decoration: accountInput('Selecciona el tipo'),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'veterinaria',
-                            child: Text('Veterinaria'),
+                        title: 'Tipo de organización',
+                        hint: 'Seleccionar tipo',
+                        options: const [
+                          AppSelectOption(
+                            'veterinaria',
+                            'Veterinaria',
+                            icon: Icons.local_hospital_outlined,
                           ),
-                          DropdownMenuItem(
-                            value: 'refugio',
-                            child: Text('Refugio'),
+                          AppSelectOption(
+                            'refugio',
+                            'Refugio',
+                            icon: Icons.home_outlined,
                           ),
                         ],
-                        onChanged:
-                            busy
-                                ? null
-                                : (value) {
-                                  if (value != null) {
-                                    setState(() => _organizationType = value);
-                                  }
-                                },
+                        enabled: !busy,
+                        onChanged: (value) =>
+                            setState(() => _organizationType = value),
+                        validator: (value) => value == null
+                            ? 'Selecciona el tipo de organización.'
+                            : null,
                       ),
                     ),
                     AccountField(
@@ -605,16 +660,35 @@ class _AccountFormState extends _FormState<AccountForm> {
                         decoration: accountInput(
                           'Nombre de tu veterinaria o refugio',
                         ),
-                        validator:
-                            (value) =>
-                                (value?.trim().length ?? 0) < 2
-                                    ? 'Escribe el nombre de la organización.'
-                                    : null,
+                        validator: (value) => (value?.trim().length ?? 0) < 2
+                            ? 'Escribe el nombre de la organización.'
+                            : null,
                       ),
                     ),
-                  ],
+                    const _RegistrationSectionHeader(
+                      icon: Icons.badge_outlined,
+                      title: 'Persona encargada',
+                      subtitle: 'Responsable de administrar esta cuenta',
+                    ),
+                  ] else
+                    const _RegistrationSectionHeader(
+                      icon: Icons.person_outline_rounded,
+                      title: 'Datos personales',
+                      subtitle: 'Información de quien crea la cuenta',
+                    ),
+                  const SizedBox(height: 16),
+                  _nameField(
+                    _name,
+                    _organization ? 'Nombres del encargado' : 'Nombres',
+                    'Ej. María José',
+                  ),
+                  _nameField(
+                    _surname,
+                    _organization ? 'Apellidos del encargado' : 'Apellidos',
+                    'Ej. Pérez López',
+                  ),
                   AccountField(
-                    'Teléfono',
+                    _organization ? 'Teléfono del encargado' : 'Teléfono',
                     TextFormField(
                       controller: _phone,
                       enabled: !busy,
@@ -625,8 +699,8 @@ class _AccountFormState extends _FormState<AccountForm> {
                         TextInputFormatter.withFunction(
                           (previous, next) =>
                               next.text.isEmpty || '2389'.contains(next.text[0])
-                                  ? next
-                                  : previous,
+                              ? next
+                              : previous,
                         ),
                         LengthLimitingTextInputFormatter(8),
                       ],
@@ -645,6 +719,12 @@ class _AccountFormState extends _FormState<AccountForm> {
                       },
                     ),
                   ),
+                  const _RegistrationSectionHeader(
+                    icon: Icons.lock_person_outlined,
+                    title: 'Acceso a la cuenta',
+                    subtitle: 'Correo y contraseña para iniciar sesión',
+                  ),
+                  const SizedBox(height: 16),
                 ],
                 AccountField(
                   'Correo electrónico',
@@ -679,10 +759,12 @@ class _AccountFormState extends _FormState<AccountForm> {
                       register ? 'Mínimo 8 caracteres' : '••••••••',
                       icon: register ? null : Icons.lock_outline_rounded,
                       suffix: IconButton(
-                        tooltip:
-                            _hide ? 'Mostrar contraseña' : 'Ocultar contraseña',
-                        onPressed:
-                            busy ? null : () => setState(() => _hide = !_hide),
+                        tooltip: _hide
+                            ? 'Mostrar contraseña'
+                            : 'Ocultar contraseña',
+                        onPressed: busy
+                            ? null
+                            : () => setState(() => _hide = !_hide),
                         icon: Icon(
                           _hide
                               ? Icons.visibility_outlined
@@ -690,16 +772,15 @@ class _AccountFormState extends _FormState<AccountForm> {
                         ),
                       ),
                     ),
-                    validator:
-                        register
-                            ? _validateNewPassword
-                            : (value) =>
-                                value == null || value.isEmpty
-                                    ? 'Escribe tu contraseña.'
-                                    : null,
+                    validator: register
+                        ? _validateNewPassword
+                        : (value) => value == null || value.isEmpty
+                              ? 'Escribe tu contraseña.'
+                              : null,
                     scrollPadding: const EdgeInsets.only(bottom: 280),
-                    onFieldSubmitted:
-                        register ? null : (_) => _submitValidated(),
+                    onFieldSubmitted: register
+                        ? null
+                        : (_) => _submitValidated(),
                   ),
                 ),
                 if (register) ...[
@@ -708,13 +789,28 @@ class _AccountFormState extends _FormState<AccountForm> {
                     TextFormField(
                       controller: _confirmPassword,
                       enabled: !busy,
-                      obscureText: _hide,
+                      obscureText: _hideConfirmation,
                       autocorrect: false,
                       enableSuggestions: false,
                       textInputAction: TextInputAction.done,
                       scrollPadding: const EdgeInsets.only(bottom: 300),
                       decoration: accountInput(
                         'Escribe la contraseña otra vez',
+                        suffix: IconButton(
+                          tooltip: _hideConfirmation
+                              ? 'Mostrar confirmación'
+                              : 'Ocultar confirmación',
+                          onPressed: busy
+                              ? null
+                              : () => setState(
+                                  () => _hideConfirmation = !_hideConfirmation,
+                                ),
+                          icon: Icon(
+                            _hideConfirmation
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -741,13 +837,12 @@ class _AccountFormState extends _FormState<AccountForm> {
         if (register)
           CheckboxListTile(
             value: _locationAlerts,
-            onChanged:
-                busy
-                    ? null
-                    : (value) => setState(() {
-                      _locationAlerts = value ?? false;
-                      error = null;
-                    }),
+            onChanged: busy
+                ? null
+                : (value) => setState(() {
+                    _locationAlerts = value ?? false;
+                    error = null;
+                  }),
             contentPadding: EdgeInsets.zero,
             activeColor: petOrange,
             checkColor: petInk,
@@ -859,10 +954,9 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
   @override
   Widget build(BuildContext context) => AccountLayout(
     title: 'Recupera tu contraseña',
-    subtitle:
-        _usingLink
-            ? 'Copia y pega el enlace del correo de PetID.'
-            : 'Te enviaremos un enlace para cambiar tu contraseña.',
+    subtitle: _usingLink
+        ? 'Copia y pega el enlace del correo de PetID.'
+        : 'Te enviaremos un enlace para cambiar tu contraseña.',
     busy: busy,
     children: [
       if (_notice case final notice?)
@@ -897,11 +991,9 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                   enableSuggestions: false,
                   keyboardType: TextInputType.url,
                   decoration: accountInput('Pega el enlace aquí'),
-                  validator:
-                      (value) =>
-                          _token(value ?? '') == null
-                              ? 'Pega el enlace completo que recibiste.'
-                              : null,
+                  validator: (value) => _token(value ?? '') == null
+                      ? 'Pega el enlace completo que recibiste.'
+                      : null,
                 ),
               ),
             if (_usingLink)
@@ -915,16 +1007,13 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
                   decoration: accountInput(
                     'Mínimo 8 caracteres',
                     suffix: IconButton(
-                      tooltip:
-                          _hidePassword
-                              ? 'Mostrar contraseña'
-                              : 'Ocultar contraseña',
-                      onPressed:
-                          busy
-                              ? null
-                              : () => setState(
-                                () => _hidePassword = !_hidePassword,
-                              ),
+                      tooltip: _hidePassword
+                          ? 'Mostrar contraseña'
+                          : 'Ocultar contraseña',
+                      onPressed: busy
+                          ? null
+                          : () =>
+                                setState(() => _hidePassword = !_hidePassword),
                       icon: Icon(
                         _hidePassword
                             ? Icons.visibility_outlined
@@ -951,24 +1040,23 @@ class _AccountHelpState extends _FormState<_AccountHelp> {
             ? 'Guardar contraseña'
             : 'Enviar enlace',
         loading: busy,
-        onPressed:
-            busy
-                ? null
-                : () {
-                  if (!form.currentState!.validate()) return;
-                  FocusScope.of(context).unfocus();
-                  _submit();
-                },
+        onPressed: busy
+            ? null
+            : () {
+                if (!form.currentState!.validate()) return;
+                FocusScope.of(context).unfocus();
+                _submit();
+              },
       ),
       accountLink(
         _usingLink ? 'Solicitar otro enlace' : 'Ya tengo el enlace',
         busy
             ? null
             : () => setState(() {
-              _hasLink = !_hasLink;
-              error = null;
-              _notice = null;
-            }),
+                _hasLink = !_hasLink;
+                error = null;
+                _notice = null;
+              }),
       ),
     ],
   );
@@ -1042,12 +1130,11 @@ class _SightingFormState extends _FormState<SightingForm> {
     if (busy) return;
     final selected = await Navigator.of(context).push<LocationSelection>(
       MaterialPageRoute<LocationSelection>(
-        builder:
-            (_) => LocationPickerPage(
-              initialLatitude: _latitude,
-              initialLongitude: _longitude,
-              initialLabel: _locationLabel,
-            ),
+        builder: (_) => LocationPickerPage(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+          initialLabel: _locationLabel,
+        ),
       ),
     );
     if (!mounted || selected == null) return;
@@ -1095,10 +1182,9 @@ class _SightingFormState extends _FormState<SightingForm> {
         _capture = 'desconocida';
         _latitude = latitude;
         _longitude = longitude;
-        _locationLabel =
-            latitude != null && longitude != null
-                ? 'Ubicación tomada con la foto'
-                : _locationLabel;
+        _locationLabel = latitude != null && longitude != null
+            ? 'Ubicación tomada con la foto'
+            : _locationLabel;
         _locationError = null;
       });
       if (latitude != null && longitude != null) {
@@ -1131,10 +1217,9 @@ class _SightingFormState extends _FormState<SightingForm> {
     }
     if (!mounted) return;
     if (photo != null) {
-      final result =
-          response['data'] is Map
-              ? (response['data'] as Map)['resultado']
-              : null;
+      final result = response['data'] is Map
+          ? (response['data'] as Map)['resultado']
+          : null;
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -1234,11 +1319,10 @@ class _SightingFormState extends _FormState<SightingForm> {
               _SelectedPhotoCard(
                 photo: photo,
                 enabled: !busy,
-                onRemove:
-                    () => setState(() {
-                      _photo = null;
-                      _capture = 'desconocida';
-                    }),
+                onRemove: () => setState(() {
+                  _photo = null;
+                  _capture = 'desconocida';
+                }),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -1254,12 +1338,11 @@ class _SightingFormState extends _FormState<SightingForm> {
             ],
             const SizedBox(height: 22),
             _ReportSubmitButton(
-              label:
-                  busy
-                      ? 'Enviando reporte...'
-                      : _photo == null
-                      ? 'Enviar avistamiento'
-                      : 'Buscar coincidencias y reportar',
+              label: busy
+                  ? 'Enviando reporte...'
+                  : _photo == null
+                  ? 'Enviar avistamiento'
+                  : 'Buscar coincidencias y reportar',
               loading: busy,
               onPressed: busy ? null : _submitValidated,
             ),
@@ -1277,17 +1360,15 @@ class _ScanResultSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data =
-        result is Map
-            ? Map<String, dynamic>.from(result! as Map)
-            : const <String, dynamic>{};
-    final matches =
-        data['coincidencias'] is List
-            ? (data['coincidencias'] as List)
-                .whereType<Map>()
-                .map(Map<String, dynamic>.from)
-                .toList()
-            : const <Map<String, dynamic>>[];
+    final data = result is Map
+        ? Map<String, dynamic>.from(result! as Map)
+        : const <String, dynamic>{};
+    final matches = data['coincidencias'] is List
+        ? (data['coincidencias'] as List)
+              .whereType<Map>()
+              .map(Map<String, dynamic>.from)
+              .toList()
+        : const <Map<String, dynamic>>[];
     final completed = data['procesamiento'] == 'visual_completado';
 
     return SafeArea(
@@ -1316,18 +1397,18 @@ class _ScanResultSheet extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color:
-                          completed
-                              ? const Color(0xFFDDF5EE)
-                              : const Color(0xFFFFE8D8),
+                      color: completed
+                          ? const Color(0xFFDDF5EE)
+                          : const Color(0xFFFFE8D8),
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Icon(
                       completed
                           ? Icons.center_focus_strong_rounded
                           : Icons.info_outline_rounded,
-                      color:
-                          completed ? const Color(0xFF176D61) : petDarkOrange,
+                      color: completed
+                          ? const Color(0xFF176D61)
+                          : petDarkOrange,
                     ),
                   ),
                   const SizedBox(width: 13),
@@ -1346,8 +1427,8 @@ class _ScanResultSheet extends StatelessWidget {
                         Text(
                           completed
                               ? matches.isEmpty
-                                  ? 'No encontramos una coincidencia visual por ahora.'
-                                  : 'Estas son las mascotas visualmente más parecidas.'
+                                    ? 'No encontramos una coincidencia visual por ahora.'
+                                    : 'Estas son las mascotas visualmente más parecidas.'
                               : 'El reconocimiento visual no pudo completarse en este intento.',
                           style: const TextStyle(
                             color: accountMuted,
@@ -1367,11 +1448,10 @@ class _ScanResultSheet extends StatelessWidget {
                     physics: const BouncingScrollPhysics(),
                     itemCount: matches.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder:
-                        (_, index) => Reveal(
-                          order: index,
-                          child: _VisualMatchCard(match: matches[index]),
-                        ),
+                    itemBuilder: (_, index) => Reveal(
+                      order: index,
+                      child: _VisualMatchCard(match: matches[index]),
+                    ),
                   ),
                 )
               else
@@ -1457,24 +1537,19 @@ class _VisualMatchCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: SizedBox.square(
               dimension: 64,
-              child:
-                  photo == null
-                      ? const ColoredBox(
+              child: photo == null
+                  ? const ColoredBox(
+                      color: Color(0xFFFFE8D8),
+                      child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                    )
+                  : Image.network(
+                      photo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(
                         color: Color(0xFFFFE8D8),
                         child: Icon(Icons.pets_rounded, color: petDarkOrange),
-                      )
-                      : Image.network(
-                        photo,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (_, _, _) => const ColoredBox(
-                              color: Color(0xFFFFE8D8),
-                              child: Icon(
-                                Icons.pets_rounded,
-                                color: petDarkOrange,
-                              ),
-                            ),
                       ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1659,12 +1734,11 @@ class _ReportLocationCard extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: BorderSide(
-              color:
-                  error != null
-                      ? const Color(0xFFE05A67)
-                      : selected
-                      ? const Color(0xFF7EDCC8)
-                      : accountBorder,
+              color: error != null
+                  ? const Color(0xFFE05A67)
+                  : selected
+                  ? const Color(0xFF7EDCC8)
+                  : accountBorder,
               width: 2,
             ),
           ),
@@ -1679,10 +1753,9 @@ class _ReportLocationCard extends StatelessWidget {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color:
-                          selected
-                              ? const Color(0xFFCCF3E9)
-                              : const Color(0xFFFFE7D5),
+                      color: selected
+                          ? const Color(0xFFCCF3E9)
+                          : const Color(0xFFFFE7D5),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(
@@ -1791,16 +1864,12 @@ class _ReportSubmitButton extends StatelessWidget {
     ),
     child: FilledButton.icon(
       onPressed: onPressed,
-      icon:
-          loading
-              ? const SizedBox.square(
-                dimension: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: petInk,
-                ),
-              )
-              : const Icon(Icons.send_rounded),
+      icon: loading
+          ? const SizedBox.square(
+              dimension: 19,
+              child: CircularProgressIndicator(strokeWidth: 2.4, color: petInk),
+            )
+          : const Icon(Icons.send_rounded),
       label: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         child: Text(label, key: ValueKey(label)),

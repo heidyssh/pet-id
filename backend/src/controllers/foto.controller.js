@@ -11,7 +11,8 @@ export const subirFotoMascota = asyncHandler(async (req, res) => {
     req.params.idMascota,
     req.usuario.id_usuario,
     req.file,
-    req.body.es_principal === 'true'
+    req.body.es_principal === 'true',
+    req.body.requiere_vector === 'true'
   );
   return res.status(201).json({
     success: true,

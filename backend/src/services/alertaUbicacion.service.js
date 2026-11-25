@@ -114,7 +114,6 @@ export async function notificarSuscriptoresCercanos(idReporte) {
     JOIN mascotas m ON m.id_mascota = r.id_mascota
     JOIN suscripciones_ubicacion s
       ON s.activa = true
-     AND s.fecha_actualizacion >= NOW() - INTERVAL '24 hours'
      AND s.id_usuario <> m.id_dueno
      AND r.ubicacion IS NOT NULL
      AND ST_DWithin(s.ubicacion, r.ubicacion, s.radio_km * 1000)

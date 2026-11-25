@@ -62,12 +62,12 @@ void main() {
     addTearDown(client.close);
     await openForm(tester, client, register: true);
     await press(tester, find.text('Veterinaria o refugio'));
-    await press(tester, find.text('Veterinaria'));
-    await press(tester, find.text('Refugio').last);
+    await press(tester, find.text('Seleccionar tipo'));
+    await press(tester, find.text('Refugio'));
     final inputs = find.byType(TextFormField);
-    await type(tester, inputs.at(0), 'María19  José');
-    await type(tester, inputs.at(1), 'Pérez López');
-    await type(tester, inputs.at(2), 'Refugio PetID');
+    await type(tester, inputs.at(0), 'Refugio PetID');
+    await type(tester, inputs.at(1), 'María19  José');
+    await type(tester, inputs.at(2), 'Pérez López');
     await type(tester, inputs.at(3), '9876-5432');
     await type(tester, inputs.at(5), 'PetId123!');
     await type(tester, inputs.at(6), 'PetId123!');

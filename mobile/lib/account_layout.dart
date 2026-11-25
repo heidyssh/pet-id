@@ -355,13 +355,16 @@ class AccountButton extends StatelessWidget {
 
 Widget accountLink(String label, VoidCallback? onPressed) => TextButton(
   onPressed: onPressed,
-  child: Text(
-    label,
-    style: const TextStyle(
-      decoration: TextDecoration.underline,
-      fontWeight: FontWeight.w700,
-    ),
+  style: TextButton.styleFrom(
+    foregroundColor: petDarkOrange,
+    disabledForegroundColor: accountMuted.withValues(alpha: .45),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    minimumSize: const Size(0, 38),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    shape: const StadiumBorder(),
+    textStyle: const TextStyle(fontWeight: FontWeight.w800),
   ),
+  child: Text(label),
 );
 
 Widget accountError(BuildContext context, String message) => Padding(

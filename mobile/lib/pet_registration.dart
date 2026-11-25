@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
 import 'api.dart';
+import 'app_select.dart';
 import 'motion.dart';
 import 'pet_camera.dart';
 import 'welcome.dart';
@@ -325,7 +326,12 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
       }
       for (var i = 0; i < _photos.length; i++) {
         if (_uploaded.contains(i)) continue;
-        await session.uploadPetPhoto(_createdId!, _photos[i]!, main: i == 0);
+        await session.uploadPetPhoto(
+          _createdId!,
+          _photos[i]!,
+          main: i == 0,
+          requireRecognition: true,
+        );
         _uploaded.add(i);
         if (mounted) setState(() {});
       }
@@ -482,29 +488,29 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
             Expanded(
               child: AccountField(
                 'Especie',
-                DropdownButtonFormField<int>(
+                AppSelectField<int>(
                   value: _speciesId,
-                  hint: const Text('Seleccionar'),
-                  decoration: accountInput('Seleccionar'),
-                  items: _species
+                  title: 'Especie',
+                  hint: 'Seleccionar',
+                  options: _species
                       .map(
-                        (item) => DropdownMenuItem(
-                          value: (item['id_especie'] as num).toInt(),
-                          child: Text('${item['nombre']}'),
+                        (item) => AppSelectOption(
+                          (item['id_especie'] as num).toInt(),
+                          '${item['nombre']}',
+                          icon: Icons.pets_outlined,
                         ),
                       )
                       .toList(),
-                  onChanged: _loadingCatalog
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _speciesId = value;
-                            _breedId = null;
-                            _breedChosen = false;
-                            _breeds = const [];
-                          });
-                          _loadBreeds();
-                        },
+                  enabled: !_loadingCatalog,
+                  onChanged: (value) {
+                    setState(() {
+                      _speciesId = value;
+                      _breedId = null;
+                      _breedChosen = false;
+                      _breeds = const [];
+                    });
+                    _loadBreeds();
+                  },
                   validator: (value) =>
                       value == null ? 'Selecciona la especie.' : null,
                 ),
@@ -514,13 +520,13 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
             Expanded(
               child: AccountField(
                 'Sexo',
-                DropdownButtonFormField<String>(
+                AppSelectField<String>(
                   value: _sex,
-                  hint: const Text('Seleccionar'),
-                  decoration: accountInput('Seleccionar'),
-                  items: const [
-                    DropdownMenuItem(value: 'hembra', child: Text('Hembra')),
-                    DropdownMenuItem(value: 'macho', child: Text('Macho')),
+                  title: 'Sexo',
+                  hint: 'Seleccionar',
+                  options: const [
+                    AppSelectOption('hembra', 'Hembra'),
+                    AppSelectOption('macho', 'Macho'),
                   ],
                   onChanged: (value) => setState(() => _sex = value),
                   validator: (value) =>
@@ -574,14 +580,14 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
             Expanded(
               child: AccountField(
                 'Tamaño',
-                DropdownButtonFormField<String>(
+                AppSelectField<String>(
                   value: _size,
-                  hint: const Text('Seleccionar'),
-                  decoration: accountInput('Seleccionar'),
-                  items: const [
-                    DropdownMenuItem(value: 'pequeno', child: Text('Pequeño')),
-                    DropdownMenuItem(value: 'mediano', child: Text('Mediano')),
-                    DropdownMenuItem(value: 'grande', child: Text('Grande')),
+                  title: 'Tamaño',
+                  hint: 'Seleccionar',
+                  options: const [
+                    AppSelectOption('pequeno', 'Pequeño'),
+                    AppSelectOption('mediano', 'Mediano'),
+                    AppSelectOption('grande', 'Grande'),
                   ],
                   onChanged: (value) => setState(() => _size = value),
                   validator: (value) =>
