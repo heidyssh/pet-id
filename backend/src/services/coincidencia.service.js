@@ -90,6 +90,69 @@ export async function buscarMascotasSimilares(archivo, limite = 5, idUsuarioExcl
   };
 }
 
+export async function registrarCoincidenciaSugerida(
+  idAvistamiento,
+  idReporte,
+  idUsuario
+) {
+  if (!validarIdPositivo(idAvistamiento) || !validarIdPositivo(idReporte)) {
+    throw new AppError('Identificador inválido', 400);
+  }
+
+  const reporte = await ReporteExtravio.findOne({
+    where: { id_reporte: idReporte, estado: 'activo' },
+    include: [{
+      model: Mascota,
+      as: 'mascota',
+      required: true,
+      attributes: ['id_dueno', 'nombre'],
+    }],
+  });
+  if (!reporte) {
+    throw new AppError('La alerta seleccionada ya no está activa', 409);
+  }
+  if (idUsuario != null && String(reporte.mascota.id_dueno) === String(idUsuario)) {
+    throw new AppError(
+      'No puedes registrar un avistamiento sobre tu propia mascota',
+      403
+    );
+  }
+
+  const [coincidencia, creada] = await Coincidencia.findOrCreate({
+    where: {
+      id_avistamiento: idAvistamiento,
+      id_reporte: idReporte,
+    },
+    defaults: {
+      metodo: 'descripcion',
+      puntuacion: null,
+      puntuacion_visual: null,
+      puntuacion_contexto: null,
+      estado_revision: 'pendiente',
+      detalles: {
+        sugerida_por_reportante: true,
+        identidad_sin_confirmar: true,
+      },
+    },
+  });
+
+  if (creada) {
+    await crearNotificacion({
+      id_usuario: reporte.mascota.id_dueno,
+      tipo: 'coincidencia_nueva',
+      titulo: 'Posible avistamiento de tu mascota',
+      mensaje: `Una persona cree haber visto a ${reporte.mascota.nombre}. Revisa la foto y los detalles antes de confirmarlo.`,
+      datos: {
+        id_coincidencia: coincidencia.id_coincidencia,
+        id_reporte: idReporte,
+        id_avistamiento: idAvistamiento,
+      },
+    });
+  }
+
+  return coincidencia;
+}
+
 async function puntuacionesContexto(idAvistamiento) {
   const filas = await sequelize.query(`
     SELECT

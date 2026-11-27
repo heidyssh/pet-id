@@ -9,6 +9,11 @@ const ubicacionSchema = z.strictObject({
 });
 
 export const crearAvistamientoSchema = z.strictObject({
+  id_reporte_sugerido: z.number()
+    .int()
+    .positive()
+    .optional(),
+
   id_especie: z.number()
     .int()
     .positive()
@@ -64,6 +69,7 @@ export const crearAvistamientoSchema = z.strictObject({
 );
 
 export const escanearAvistamientoSchema = z.strictObject({
+  id_reporte_sugerido: z.number().int().positive().optional(),
   id_especie: z.number().int().positive().max(32767).nullable().optional(),
   fecha_avistamiento: z.iso.datetime({ offset: true }).refine(
     (fecha) => new Date(fecha).getTime() <= Date.now() + MARGEN_RELOJ_MS,

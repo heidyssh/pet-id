@@ -1067,9 +1067,11 @@ class SightingForm extends StatefulWidget {
     super.key,
     this.signedIn = false,
     this.startWithCamera = false,
+    this.suggestedLostReport,
   });
   final bool signedIn;
   final bool startWithCamera;
+  final Map<String, dynamic>? suggestedLostReport;
 
   @override
   State<SightingForm> createState() => _SightingFormState();
@@ -1195,6 +1197,8 @@ class _SightingFormState extends _FormState<SightingForm> {
 
   Future<void> _report() => perform(() async {
     final data = {
+      if (widget.suggestedLostReport?['id_reporte'] case final Object reportId)
+        'id_reporte_sugerido': int.tryParse('$reportId') ?? reportId,
       if (_locationLabel?.trim().isNotEmpty == true)
         'referencia_lugar': _locationLabel!.trim(),
       'descripcion': _description.text.trim(),
@@ -1250,105 +1254,197 @@ class _SightingFormState extends _FormState<SightingForm> {
   }
 
   @override
-  Widget build(BuildContext context) => AccountLayout(
-    title: 'Reportar avistamiento',
-    subtitle:
-        'Comparte lo que viste. Una foto clara puede ayudar a encontrar a su familia.',
-    busy: busy,
-    children: [
-      Form(
-        key: form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ReportLocationCard(
-              label: _locationLabel,
-              error: _locationError,
-              enabled: !busy,
-              onTap: _chooseLocation,
-            ),
-            const SizedBox(height: 18),
-            AccountField(
-              'Describe a la mascota',
-              TextFormField(
-                controller: _description,
+  Widget build(BuildContext context) {
+    final suggested = widget.suggestedLostReport;
+    final petName = '${suggested?['nombre_mascota'] ?? ''}'.trim();
+    return AccountLayout(
+      title: suggested == null
+          ? 'Reportar avistamiento'
+          : 'Posible avistamiento',
+      subtitle: suggested == null
+          ? 'Comparte lo que viste. Una foto clara puede ayudar a encontrar a su familia.'
+          : 'Comparte lo que viste para que la familia pueda comprobar si es ${petName.isEmpty ? 'su mascota' : petName}.',
+      busy: busy,
+      children: [
+        Form(
+          key: form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (suggested != null) ...[
+                _SuggestedLostPetCard(item: suggested),
+                const SizedBox(height: 18),
+              ],
+              _ReportLocationCard(
+                label: _locationLabel,
+                error: _locationError,
                 enabled: !busy,
-                minLines: 4,
-                maxLines: 6,
-                maxLength: 3000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: accountInput(
-                  'Color, tamaño, collar, señas particulares...',
-                ).copyWith(alignLabelWithHint: true),
-                validator: _required,
+                onTap: _chooseLocation,
               ),
+              const SizedBox(height: 18),
+              AccountField(
+                'Describe a la mascota',
+                TextFormField(
+                  controller: _description,
+                  enabled: !busy,
+                  minLines: 4,
+                  maxLines: 6,
+                  maxLength: 3000,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: accountInput(
+                    'Color, tamaño, collar, señas particulares...',
+                  ).copyWith(alignLabelWithHint: true),
+                  validator: _required,
+                ),
+              ),
+              const Text(
+                'Foto de la mascota',
+                style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'Opcional, pero ayuda a buscar coincidencias.',
+                style: TextStyle(color: accountMuted, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MediaActionButton(
+                      icon: Icons.photo_camera_outlined,
+                      label: 'Tomar foto',
+                      onPressed: busy ? null : _takePhoto,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _MediaActionButton(
+                      icon: Icons.photo_library_outlined,
+                      label: 'Galería',
+                      onPressed: busy ? null : () => _pick(ImageSource.gallery),
+                    ),
+                  ),
+                ],
+              ),
+              if (_photo case final photo?) ...[
+                const SizedBox(height: 14),
+                _SelectedPhotoCard(
+                  photo: photo,
+                  enabled: !busy,
+                  onRemove: () => setState(() {
+                    _photo = null;
+                    _capture = 'desconocida';
+                  }),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '¿A qué distancia tomaste la foto?',
+                  style: TextStyle(color: petInk, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 9),
+                _CaptureDistance(
+                  value: _capture,
+                  enabled: !busy,
+                  onChanged: (value) => setState(() => _capture = value),
+                ),
+              ],
+              const SizedBox(height: 22),
+              _ReportSubmitButton(
+                label: busy
+                    ? 'Enviando reporte...'
+                    : _photo == null
+                    ? 'Enviar avistamiento'
+                    : 'Buscar coincidencias y reportar',
+                loading: busy,
+                onPressed: busy ? null : _submitValidated,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SuggestedLostPetCard extends StatelessWidget {
+  const _SuggestedLostPetCard({required this.item});
+
+  final Map<String, dynamic> item;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = context.read<PetIdApi>().imageUrl(item['foto']);
+    final name = '${item['nombre_mascota'] ?? 'Mascota perdida'}';
+    final detail = [
+      item['raza'],
+      item['especie'],
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).firstOrNull;
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFFFB5CC), width: 2),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox.square(
+              dimension: 62,
+              child: photo == null
+                  ? const ColoredBox(
+                      color: Color(0xFFFFD9E5),
+                      child: Icon(Icons.pets_rounded, color: Color(0xFFD93A6E)),
+                    )
+                  : Image.network(
+                      photo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(
+                        color: Color(0xFFFFD9E5),
+                        child: Icon(
+                          Icons.pets_rounded,
+                          color: Color(0xFFD93A6E),
+                        ),
+                      ),
+                    ),
             ),
-            const Text(
-              'Foto de la mascota',
-              style: TextStyle(color: petInk, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 5),
-            const Text(
-              'Opcional, pero ayuda a buscar coincidencias.',
-              style: TextStyle(color: accountMuted, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            Row(
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _MediaActionButton(
-                    icon: Icons.photo_camera_outlined,
-                    label: 'Tomar foto',
-                    onPressed: busy ? null : _takePhoto,
+                const Text(
+                  'CREES QUE PODRÍA SER',
+                  style: TextStyle(
+                    color: Color(0xFFD93A6E),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .7,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _MediaActionButton(
-                    icon: Icons.photo_library_outlined,
-                    label: 'Galería',
-                    onPressed: busy ? null : () => _pick(ImageSource.gallery),
+                const SizedBox(height: 3),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: petInk,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
                   ),
+                ),
+                Text(
+                  detail ?? 'La familia confirmará la identidad',
+                  style: const TextStyle(color: accountMuted, fontSize: 12),
                 ),
               ],
             ),
-            if (_photo case final photo?) ...[
-              const SizedBox(height: 14),
-              _SelectedPhotoCard(
-                photo: photo,
-                enabled: !busy,
-                onRemove: () => setState(() {
-                  _photo = null;
-                  _capture = 'desconocida';
-                }),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '¿A qué distancia tomaste la foto?',
-                style: TextStyle(color: petInk, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 9),
-              _CaptureDistance(
-                value: _capture,
-                enabled: !busy,
-                onChanged: (value) => setState(() => _capture = value),
-              ),
-            ],
-            const SizedBox(height: 22),
-            _ReportSubmitButton(
-              label: busy
-                  ? 'Enviando reporte...'
-                  : _photo == null
-                  ? 'Enviar avistamiento'
-                  : 'Buscar coincidencias y reportar',
-              loading: busy,
-              onPressed: busy ? null : _submitValidated,
-            ),
-          ],
-        ),
+          ),
+          const Icon(Icons.link_rounded, color: Color(0xFFD93A6E)),
+        ],
       ),
-    ],
-  );
+    );
+  }
 }
 
 class _ScanResultSheet extends StatelessWidget {

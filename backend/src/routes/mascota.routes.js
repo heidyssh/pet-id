@@ -16,7 +16,11 @@ import {
 import { validar } from '../middlewares/validate.middleware.js';
 import { verificarToken } from '../middlewares/auth.middleware.js';
 import { subirFoto } from '../middlewares/upload.middleware.js';
-import { subirFotoMascota } from '../controllers/foto.controller.js';
+import {
+  subirFotoMascota,
+  marcarFotoPrincipalMascota,
+  borrarFotoMascota,
+} from '../controllers/foto.controller.js';
 
 const router = Router();
 
@@ -40,6 +44,16 @@ router.post(
   '/:idMascota/fotos',
   subirFoto,
   subirFotoMascota
+);
+
+router.patch(
+  '/:idMascota/fotos/:idFoto/principal',
+  marcarFotoPrincipalMascota
+);
+
+router.delete(
+  '/:idMascota/fotos/:idFoto',
+  borrarFotoMascota
 );
 
 // Consultar una mascota propia

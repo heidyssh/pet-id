@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
+import 'account_layout.dart';
 import 'api.dart';
 import 'welcome.dart';
 
@@ -55,14 +56,12 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     super.initState();
     final hasInitial =
         widget.initialLatitude != null && widget.initialLongitude != null;
-    _point =
-        hasInitial
-            ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
-            : _fallback;
-    _label =
-        widget.initialLabel?.trim().isNotEmpty == true
-            ? widget.initialLabel!.trim()
-            : _label;
+    _point = hasInitial
+        ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
+        : _fallback;
+    _label = widget.initialLabel?.trim().isNotEmpty == true
+        ? widget.initialLabel!.trim()
+        : _label;
     _search.addListener(_scheduleSearch);
     if (!hasInitial) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _locate());
@@ -125,7 +124,9 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     try {
       final response = await context.read<PetIdApi>().request(
         'GET',
-        '/mapas/geocodificar?direccion=${Uri.encodeQueryComponent(query)}',
+        '/mapas/geocodificar?direccion=${Uri.encodeQueryComponent(query)}'
+            '&cerca_latitud=${_point.latitude}'
+            '&cerca_longitud=${_point.longitude}',
       );
       if (!mounted || query != _search.text.trim()) return;
       setState(() => _results = _maps((response['data'] as Map?)?['items']));
@@ -187,10 +188,9 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     LocationSelection(
       latitude: _point.latitude,
       longitude: _point.longitude,
-      label:
-          _label == 'Buscando dirección...'
-              ? 'Punto seleccionado en el mapa'
-              : _label,
+      label: _label == 'Buscando dirección...'
+          ? 'Punto seleccionado en el mapa'
+          : _label,
     ),
   );
 
@@ -262,48 +262,90 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
                           decoration: InputDecoration(
                             hintText: 'Buscar dirección o lugar',
                             prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon:
-                                _searching
-                                    ? const Padding(
-                                      padding: EdgeInsets.all(14),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                    : null,
+                            suffixIcon: _searching
+                                ? const Padding(
+                                    padding: EdgeInsets.all(14),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : null,
                             border: InputBorder.none,
                           ),
                         ),
                       ),
-                      if (_results.isNotEmpty)
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          margin: const EdgeInsets.only(top: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            itemCount: _results.length,
-                            separatorBuilder:
-                                (_, _) => const Divider(height: 1),
-                            itemBuilder:
-                                (_, index) => ListTile(
-                                  leading: const Icon(
-                                    Icons.location_on_outlined,
-                                    color: petDarkOrange,
-                                  ),
-                                  title: Text(
-                                    '${_results[index]['direccion'] ?? 'Lugar encontrado'}',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  onTap: () => _selectResult(_results[index]),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _results.isEmpty
+                            ? const SizedBox.shrink()
+                            : Container(
+                                key: const ValueKey('search-results'),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 220,
                                 ),
-                          ),
-                        ),
+                                margin: const EdgeInsets.only(top: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x22000000),
+                                      blurRadius: 18,
+                                      offset: Offset(0, 7),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.fromLTRB(
+                                        14,
+                                        11,
+                                        14,
+                                        5,
+                                      ),
+                                      child: Text(
+                                        'LUGARES CERCA DEL MAPA',
+                                        style: TextStyle(
+                                          color: accountMuted,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: .7,
+                                        ),
+                                      ),
+                                    ),
+                                    Flexible(
+                                      child: ListView.separated(
+                                        shrinkWrap: true,
+                                        padding: const EdgeInsets.only(
+                                          bottom: 5,
+                                        ),
+                                        itemCount: _results.length,
+                                        separatorBuilder: (_, _) =>
+                                            const Divider(height: 1),
+                                        itemBuilder: (_, index) => ListTile(
+                                          leading: const Icon(
+                                            Icons.location_on_outlined,
+                                            color: petDarkOrange,
+                                          ),
+                                          title: Text(
+                                            '${_results[index]['direccion'] ?? 'Lugar encontrado'}',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          onTap: () =>
+                                              _selectResult(_results[index]),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
                     ],
                   ),
                 ),
@@ -384,7 +426,6 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
   );
 }
 
-List<Map<String, dynamic>> _maps(Object? value) =>
-    value is List
-        ? value.whereType<Map>().map(Map<String, dynamic>.from).toList()
-        : const [];
+List<Map<String, dynamic>> _maps(Object? value) => value is List
+    ? value.whereType<Map>().map(Map<String, dynamic>.from).toList()
+    : const [];

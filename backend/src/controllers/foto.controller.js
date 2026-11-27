@@ -2,6 +2,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import {
   agregarFotoMascota,
   agregarFotoAvistamiento,
+  establecerFotoPrincipalMascota,
+  eliminarFotoMascota,
 } from '../services/foto.service.js';
 import { generarCoincidenciasVisuales } from '../services/coincidencia.service.js';
 
@@ -16,6 +18,32 @@ export const subirFotoMascota = asyncHandler(async (req, res) => {
   return res.status(201).json({
     success: true,
     message: 'Fotografía registrada correctamente',
+    data: foto,
+  });
+});
+
+export const marcarFotoPrincipalMascota = asyncHandler(async (req, res) => {
+  const foto = await establecerFotoPrincipalMascota(
+    req.params.idMascota,
+    req.params.idFoto,
+    req.usuario.id_usuario
+  );
+  return res.status(200).json({
+    success: true,
+    message: 'Foto principal actualizada',
+    data: foto,
+  });
+});
+
+export const borrarFotoMascota = asyncHandler(async (req, res) => {
+  const foto = await eliminarFotoMascota(
+    req.params.idMascota,
+    req.params.idFoto,
+    req.usuario.id_usuario
+  );
+  return res.status(200).json({
+    success: true,
+    message: 'Fotografía eliminada',
     data: foto,
   });
 });

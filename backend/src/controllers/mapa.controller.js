@@ -14,8 +14,20 @@ function validar(schema, query) {
 }
 
 export const geocodificar = asyncHandler(async (req, res) => {
-  const { direccion } = validar(geocodificarSchema, req.query);
-  return res.json({ success: true, data: { items: await geocodificarDireccion(direccion) } });
+  const { direccion, cerca_latitud, cerca_longitud } = validar(
+    geocodificarSchema,
+    req.query
+  );
+  return res.json({
+    success: true,
+    data: {
+      items: await geocodificarDireccion(
+        direccion,
+        cerca_latitud,
+        cerca_longitud
+      ),
+    },
+  });
 });
 
 export const reversa = asyncHandler(async (req, res) => {

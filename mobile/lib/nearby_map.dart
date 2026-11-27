@@ -184,9 +184,10 @@ class _NearbyMapPageState extends State<NearbyMapPage>
                 Navigator.pop(sheetContext);
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => const SightingForm(
+                    builder: (_) => SightingForm(
                       signedIn: true,
                       startWithCamera: true,
+                      suggestedLostReport: item,
                     ),
                   ),
                 );
@@ -766,7 +767,11 @@ class _AlertDetailSheet extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onReportSighting,
                   icon: const Icon(Icons.camera_alt_rounded),
-                  label: const Text('Vi a esta mascota'),
+                  label: Text(
+                    '${item['nombre_mascota'] ?? ''}'.toString().trim().isEmpty
+                        ? 'Creo que vi a esta mascota'
+                        : 'Creo que vi a ${item['nombre_mascota']}',
+                  ),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(58),
                     backgroundColor: petOrange,

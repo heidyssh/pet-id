@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
@@ -322,6 +323,22 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
+  Future<void> _managePhotos() async {
+    var changed = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          _PhotoManagerSheet(pet: _pet, onChanged: () => changed = true),
+    );
+    if (!changed || !mounted) return;
+    _changed = true;
+    _photoIndex = 0;
+    await _load();
+  }
+
   void _close() => Navigator.of(context).pop(_changed);
 
   @override
@@ -478,14 +495,28 @@ class _PetDetailPageState extends State<PetDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _OfflineBadge(
-                    key: ValueKey((_offlineReady, _loading)),
-                    ready: _offlineReady,
-                    loading: _loading,
-                  ),
+                _TopButton(
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: 'Volver',
+                  onPressed: _close,
+                ),
+                Row(
+                  children: [
+                    _TopButton(
+                      icon: Icons.photo_library_outlined,
+                      tooltip: 'Editar fotos',
+                      onPressed: _managePhotos,
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _OfflineBadge(
+                        key: ValueKey((_offlineReady, _loading)),
+                        ready: _offlineReady,
+                        loading: _loading,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -684,6 +715,508 @@ class _PetDetailPageState extends State<PetDetailPage> {
             if (i < items.length - 1) const SizedBox(height: 10),
           ],
       ],
+    );
+  }
+}
+
+class _PhotoManagerSheet extends StatefulWidget {
+  const _PhotoManagerSheet({required this.pet, required this.onChanged});
+
+  final Map<String, dynamic> pet;
+  final VoidCallback onChanged;
+
+  @override
+  State<_PhotoManagerSheet> createState() => _PhotoManagerSheetState();
+}
+
+class _PhotoManagerSheetState extends State<_PhotoManagerSheet> {
+  final _picker = ImagePicker();
+  late List<Map<String, dynamic>> _photos;
+  bool _busy = false;
+  String? _workingPhoto;
+
+  String get _petId => '${widget.pet['id_mascota']}';
+
+  @override
+  void initState() {
+    super.initState();
+    _photos = _maps(widget.pet['fotos']);
+    _sortPhotos();
+  }
+
+  void _sortPhotos() {
+    _photos.sort((a, b) {
+      if (a['es_principal'] == b['es_principal']) return 0;
+      return a['es_principal'] == true ? -1 : 1;
+    });
+  }
+
+  Future<ImageSource?> _chooseSource() => showModalBottomSheet<ImageSource>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: petCream,
+          borderRadius: BorderRadius.circular(26),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: _peach,
+                foregroundColor: petDarkOrange,
+                child: Icon(Icons.photo_camera_outlined),
+              ),
+              title: const Text(
+                'Tomar una foto',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: const Text('Usar la cámara del dispositivo'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFDDF5EE),
+                foregroundColor: _mintDark,
+                child: Icon(Icons.photo_library_outlined),
+              ),
+              title: const Text(
+                'Elegir de la galería',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              subtitle: const Text('JPG, PNG o WebP de hasta 5 MB'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _addPhoto() async {
+    if (_busy || _photos.length >= 4) return;
+    final source = await _chooseSource();
+    if (source == null || !mounted) return;
+    final selected = await _picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      imageQuality: 88,
+      requestFullMetadata: false,
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final response = await context.read<Session>().uploadPetPhoto(
+        _petId,
+        selected,
+        main: _photos.isEmpty,
+        requireRecognition: true,
+      );
+      if (!mounted) return;
+      final photo = Map<String, dynamic>.from(response['data'] as Map);
+      setState(() {
+        _photos.add(photo);
+        _sortPhotos();
+      });
+      widget.onChanged();
+      showPetToast(
+        context,
+        'Foto agregada a la ficha.',
+        type: PetToastType.success,
+      );
+    } catch (error) {
+      if (mounted) {
+        showPetToast(context, _message(error), type: PetToastType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _makeMain(Map<String, dynamic> photo) async {
+    if (_busy || photo['es_principal'] == true) return;
+    final id = '${photo['id_foto']}';
+    setState(() {
+      _busy = true;
+      _workingPhoto = id;
+    });
+    try {
+      await context.read<Session>().setMainPetPhoto(_petId, id);
+      if (!mounted) return;
+      setState(() {
+        for (final item in _photos) {
+          item['es_principal'] = '${item['id_foto']}' == id;
+        }
+        _sortPhotos();
+      });
+      widget.onChanged();
+      showPetToast(
+        context,
+        'Nueva foto de portada seleccionada.',
+        type: PetToastType.success,
+      );
+    } catch (error) {
+      if (mounted) {
+        showPetToast(context, _message(error), type: PetToastType.error);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _workingPhoto = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _delete(Map<String, dynamic> photo) async {
+    if (_busy) return;
+    if (_photos.length <= 1) {
+      showPetToast(
+        context,
+        'La ficha debe conservar al menos una foto.',
+        type: PetToastType.warning,
+      );
+      return;
+    }
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: petCream,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                backgroundColor: Color(0xFFFFE5EC),
+                foregroundColor: Color(0xFFB71952),
+                child: Icon(Icons.delete_outline_rounded, size: 29),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '¿Eliminar esta foto?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Se quitará de la ficha y del reconocimiento visual.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: accountMuted),
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.pop(sheetContext, true),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: const Color(0xFFB71952),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                ),
+                child: const Text('Eliminar foto'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext, false),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final id = '${photo['id_foto']}';
+    setState(() {
+      _busy = true;
+      _workingPhoto = id;
+    });
+    try {
+      await context.read<Session>().deletePetPhoto(_petId, id);
+      if (!mounted) return;
+      setState(() {
+        _photos.removeWhere((item) => '${item['id_foto']}' == id);
+        if (!_photos.any((item) => item['es_principal'] == true) &&
+            _photos.isNotEmpty) {
+          _photos.first['es_principal'] = true;
+        }
+        _sortPhotos();
+      });
+      widget.onChanged();
+      showPetToast(context, 'Foto eliminada.', type: PetToastType.success);
+    } catch (error) {
+      if (mounted) {
+        showPetToast(context, _message(error), type: PetToastType.error);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _workingPhoto = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedPadding(
+    duration: const Duration(milliseconds: 220),
+    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .88,
+      ),
+      decoration: const BoxDecoration(
+        color: petCream,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: accountBorder,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Fotos de la mascota',
+                        style: TextStyle(
+                          color: petInk,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Elige la portada o actualiza su galería.',
+                        style: TextStyle(color: accountMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Cerrar',
+                  onPressed: _busy ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _photos.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: .78,
+              ),
+              itemBuilder: (_, index) {
+                final photo = _photos[index];
+                return Reveal(
+                  order: index,
+                  child: _ManagedPhotoCard(
+                    photo: photo,
+                    working: _workingPhoto == '${photo['id_foto']}',
+                    enabled: !_busy,
+                    onMakeMain: () => _makeMain(photo),
+                    onDelete: () => _delete(photo),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _busy || _photos.length >= 4 ? null : _addPhoto,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(
+                _photos.length >= 4
+                    ? 'Galería completa (4 de 4)'
+                    : 'Agregar foto  ·  ${_photos.length} de 4',
+              ),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                backgroundColor: petOrange,
+                foregroundColor: petInk,
+                disabledBackgroundColor: accountBorder,
+                disabledForegroundColor: accountMuted,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            const SizedBox(height: 9),
+            const Text(
+              'La portada aparece en el mapa y en tus tarjetas. Las cuatro fotos ayudan a reconocer a la mascota.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: accountMuted, fontSize: 12, height: 1.35),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ManagedPhotoCard extends StatelessWidget {
+  const _ManagedPhotoCard({
+    required this.photo,
+    required this.working,
+    required this.enabled,
+    required this.onMakeMain,
+    required this.onDelete,
+  });
+
+  final Map<String, dynamic> photo;
+  final bool working;
+  final bool enabled;
+  final VoidCallback onMakeMain;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final main = photo['es_principal'] == true;
+    final raw = photo['url_original'] ?? photo['url_recorte'];
+    final url = context.read<PetIdApi>().imageUrl(raw);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: main ? _mint : accountBorder,
+          width: main ? 2.5 : 1.5,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (url == null)
+                  const ColoredBox(
+                    color: _peach,
+                    child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                  )
+                else
+                  Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const ColoredBox(
+                      color: _peach,
+                      child: Icon(Icons.pets_rounded, color: petDarkOrange),
+                    ),
+                  ),
+                if (main)
+                  Positioned(
+                    left: 9,
+                    top: 9,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xEFFFFFFF),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded, color: _mintDark, size: 15),
+                          SizedBox(width: 4),
+                          Text(
+                            'Portada',
+                            style: TextStyle(
+                              color: _mintDark,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (working)
+                  const ColoredBox(
+                    color: Color(0x77000000),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: enabled && !main ? onMakeMain : null,
+                  icon: Icon(
+                    main ? Icons.star_rounded : Icons.star_outline_rounded,
+                  ),
+                  label: Text(main ? 'Principal' : 'Portada'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: main ? _mintDark : petDarkOrange,
+                    textStyle: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Eliminar foto',
+                onPressed: enabled ? onDelete : null,
+                color: const Color(0xFFB71952),
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1384,12 +1917,14 @@ class _LostReportSheetState extends State<_LostReportSheet> {
 }
 
 class _TopButton extends StatelessWidget {
-  const _TopButton({required this.icon, required this.onPressed});
+  const _TopButton({required this.icon, required this.onPressed, this.tooltip});
   final IconData icon;
   final VoidCallback onPressed;
+  final String? tooltip;
   @override
   Widget build(BuildContext context) => IconButton(
     onPressed: onPressed,
+    tooltip: tooltip,
     icon: Icon(icon, size: 30),
     style: IconButton.styleFrom(
       fixedSize: const Size.square(52),

@@ -1769,25 +1769,23 @@ class _ProfilePageState extends State<_ProfilePage> {
           Row(
             children: [
               const Expanded(
-                child: Text(
-                  'Mi perfil',
-                  style: TextStyle(
-                    color: petInk,
-                    fontSize: 27,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _editProfile,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Editar'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: petDarkOrange,
-                  side: const BorderSide(color: accountBorder, width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Perfil',
+                      style: TextStyle(
+                        color: petInk,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Tu cuenta y preferencias',
+                      style: TextStyle(color: accountMuted, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1869,38 +1867,41 @@ class _ProfilePageState extends State<_ProfilePage> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Editar perfil',
+                      onPressed: _editProfile,
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFEBDD),
+                        foregroundColor: petDarkOrange,
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ProfileStat(
-                        '${widget.pets.length}',
-                        'Mascotas',
-                        Icons.pets_rounded,
-                        _mint,
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .72),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ProfileStat(
+                          '${widget.pets.length}',
+                          'Mascotas',
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ProfileStat(
-                        '$_reports',
-                        'Perdidas',
-                        Icons.campaign_outlined,
-                        const Color(0xFFFFD9E5),
+                      const _ProfileStatDivider(),
+                      Expanded(child: _ProfileStat('$_reports', 'Alertas')),
+                      const _ProfileStatDivider(),
+                      Expanded(
+                        child: _ProfileStat('$_sightings', 'Avistamientos'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _ProfileStat(
-                        '$_sightings',
-                        'Avistadas',
-                        Icons.visibility_outlined,
-                        _yellow,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 if (_loading) ...[
                   const SizedBox(height: 12),
@@ -1944,7 +1945,25 @@ class _ProfilePageState extends State<_ProfilePage> {
           ),
           const SizedBox(height: 22),
           const Text(
-            'Ajustes',
+            'Preferencias',
+            style: TextStyle(
+              color: petInk,
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _LocationPreferencesCard(
+            enabled: _alertsEnabled,
+            busy: _locationBusy,
+            radiusKm: _radiusKm,
+            locationLabel: _locationLabel,
+            onToggle: _setAlerts,
+            onRefresh: () => _setAlerts(true),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Cuenta',
             style: TextStyle(
               color: petInk,
               fontSize: 19,
@@ -1957,30 +1976,8 @@ class _ProfilePageState extends State<_ProfilePage> {
             child: Column(
               children: [
                 _ProfileSetting(
-                  icon: Icons.notifications_none_rounded,
-                  color: _yellow,
-                  title: 'Alertas de mi zona',
-                  subtitle: _alertsEnabled
-                      ? 'Pérdidas a menos de ${_radiusKm.toStringAsFixed(0)} km'
-                      : 'Desactivadas',
-                  trailing: Switch.adaptive(
-                    value: _alertsEnabled,
-                    onChanged: _locationBusy ? null : _setAlerts,
-                    activeTrackColor: const Color(0xFF12CFA5),
-                  ),
-                ),
-                _ProfileSetting(
-                  icon: Icons.location_on_outlined,
-                  color: _peach,
-                  title: 'Mi ubicación',
-                  subtitle: _locationBusy
-                      ? 'Actualizando ubicación...'
-                      : _locationLabel,
-                  onTap: _locationBusy ? null : () => _setAlerts(true),
-                ),
-                _ProfileSetting(
                   icon: Icons.lock_outline_rounded,
-                  color: _lilac,
+                  color: const Color(0xFFF2ECFF),
                   title: 'Privacidad y contacto',
                   subtitle: 'Revisa tus datos y su visibilidad',
                   onTap: _privacy,
@@ -1997,14 +1994,13 @@ class _ProfilePageState extends State<_ProfilePage> {
             ),
           ),
           const SizedBox(height: 28),
-          OutlinedButton.icon(
+          TextButton.icon(
             onPressed: _loggingOut ? null : _logout,
             icon: const Icon(Icons.logout_rounded),
             label: Text(_loggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
+            style: TextButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
               foregroundColor: const Color(0xFFB71952),
-              side: const BorderSide(color: Color(0xFFFFB4CB), width: 2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
@@ -2054,23 +2050,15 @@ class _RoleBadge extends StatelessWidget {
 }
 
 class _ProfileStat extends StatelessWidget {
-  const _ProfileStat(this.value, this.label, this.icon, this.color);
+  const _ProfileStat(this.value, this.label);
   final String value;
   final String label;
-  final IconData icon;
-  final Color color;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .58),
-      borderRadius: BorderRadius.circular(16),
-    ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 4),
     child: Column(
       children: [
-        Icon(icon, color: petInk, size: 18),
-        const SizedBox(height: 3),
         Text(
           value,
           style: const TextStyle(
@@ -2085,6 +2073,144 @@ class _ProfileStat extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: accountMuted, fontSize: 11),
         ),
+      ],
+    ),
+  );
+}
+
+class _ProfileStatDivider extends StatelessWidget {
+  const _ProfileStatDivider();
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 34, color: accountBorder);
+}
+
+class _LocationPreferencesCard extends StatelessWidget {
+  const _LocationPreferencesCard({
+    required this.enabled,
+    required this.busy,
+    required this.radiusKm,
+    required this.locationLabel,
+    required this.onToggle,
+    required this.onRefresh,
+  });
+
+  final bool enabled;
+  final bool busy;
+  final double radiusKm;
+  final String locationLabel;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: accountBorder, width: 1.5),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x100F2F2C),
+          blurRadius: 18,
+          offset: Offset(0, 7),
+        ),
+      ],
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _yellow.withValues(alpha: .72),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                color: petInk,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Alertas cerca de ti',
+                    style: TextStyle(
+                      color: petInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    enabled
+                        ? 'Mascotas perdidas en ${radiusKm.toStringAsFixed(0)} km'
+                        : 'Actívalas para ayudar en tu zona',
+                    style: const TextStyle(color: accountMuted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Switch.adaptive(
+              value: enabled,
+              onChanged: busy ? null : onToggle,
+              activeTrackColor: const Color(0xFF12CFA5),
+            ),
+          ],
+        ),
+        if (enabled) ...[
+          const SizedBox(height: 13),
+          Material(
+            color: const Color(0xFFFFF7F1),
+            borderRadius: BorderRadius.circular(17),
+            child: InkWell(
+              onTap: busy ? null : onRefresh,
+              borderRadius: BorderRadius.circular(17),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: petDarkOrange,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        busy ? 'Actualizando ubicación...' : locationLabel,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: petInk,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (busy)
+                      const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      const Icon(
+                        Icons.refresh_rounded,
+                        color: accountMuted,
+                        size: 20,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     ),
   );
@@ -2195,7 +2321,6 @@ class _ProfileSetting extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.onTap,
-    this.trailing,
     this.last = false,
   });
   final IconData icon;
@@ -2203,7 +2328,6 @@ class _ProfileSetting extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
-  final Widget? trailing;
   final bool last;
 
   @override
@@ -2231,7 +2355,7 @@ class _ProfileSetting extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: accountMuted, fontSize: 12),
         ),
-        trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
+        trailing: const Icon(Icons.chevron_right_rounded),
       ),
       if (!last)
         const Divider(

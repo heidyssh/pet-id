@@ -355,6 +355,14 @@ class Session extends ChangeNotifier {
     }
   }
 
+  Future<void> setMainPetPhoto(Object petId, Object photoId) async {
+    await authRequest('PATCH', '/mascotas/$petId/fotos/$photoId/principal');
+  }
+
+  Future<void> deletePetPhoto(Object petId, Object photoId) async {
+    await authRequest('DELETE', '/mascotas/$petId/fotos/$photoId');
+  }
+
   Future<void> logout() async {
     try {
       await api.request('POST', '/sesiones/cerrar', token: _access);

@@ -116,6 +116,16 @@ export async function agregarFotoMascota(
   });
   if (!mascota) throw new AppError('Mascota no encontrada', 404);
 
+  const fotosActuales = await FotoMascota.count({
+    where: { id_mascota: idMascota },
+  });
+  if (fotosActuales >= 4) {
+    throw new AppError(
+      'La mascota ya tiene cuatro fotos. Elimina una antes de agregar otra.',
+      409
+    );
+  }
+
   const {
     normalizada, recorte, deteccion, vector, errorProveedor, errorEmbedding,
   } = await procesar(archivo.buffer, { estricto: requiereVector });
@@ -172,6 +182,88 @@ export async function agregarFotoMascota(
     ].filter(Boolean));
     throw error;
   }
+}
+
+export async function establecerFotoPrincipalMascota(
+  idMascota,
+  idFoto,
+  idUsuario
+) {
+  const foto = await FotoMascota.findOne({
+    where: { id_foto: idFoto, id_mascota: idMascota },
+    include: [{
+      model: Mascota,
+      as: 'mascota',
+      required: true,
+      where: { id_dueno: idUsuario },
+      attributes: [],
+    }],
+  });
+  if (!foto) throw new AppError('Fotografía no encontrada', 404);
+
+  await sequelize.transaction(async (transaction) => {
+    await FotoMascota.update(
+      { es_principal: false },
+      { where: { id_mascota: idMascota }, transaction }
+    );
+    await foto.update({ es_principal: true }, { transaction });
+  });
+  return { ...foto.toJSON(), es_principal: true };
+}
+
+export async function eliminarFotoMascota(idMascota, idFoto, idUsuario) {
+  const foto = await FotoMascota.findOne({
+    where: { id_foto: idFoto, id_mascota: idMascota },
+    include: [{
+      model: Mascota,
+      as: 'mascota',
+      required: true,
+      where: { id_dueno: idUsuario },
+      attributes: [],
+    }],
+  });
+  if (!foto) throw new AppError('Fotografía no encontrada', 404);
+
+  const cantidad = await FotoMascota.count({
+    where: { id_mascota: idMascota },
+  });
+  if (cantidad <= 1) {
+    throw new AppError(
+      'La ficha debe conservar al menos una fotografía.',
+      409
+    );
+  }
+
+  await sequelize.transaction(async (transaction) => {
+    const eraPrincipal = foto.es_principal;
+    await foto.destroy({ transaction });
+    if (eraPrincipal) {
+      const siguiente = await FotoMascota.findOne({
+        where: { id_mascota: idMascota },
+        order: [['fecha_registro', 'ASC'], ['id_foto', 'ASC']],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (siguiente) {
+        await siguiente.update({ es_principal: true }, { transaction });
+      }
+    }
+  });
+
+  // El registro ya no debe reaparecer si el proveedor tarda o falla. La
+  // limpieza del archivo es secundaria y se intenta sin romper la respuesta.
+  await Promise.allSettled([
+    eliminarImagen({
+      proveedor: foto.proveedor_almacenamiento,
+      id: foto.id_almacenamiento_original,
+    }),
+    eliminarImagen({
+      proveedor: foto.proveedor_almacenamiento,
+      id: foto.id_almacenamiento_recorte,
+    }),
+  ]);
+
+  return { id_foto: foto.id_foto };
 }
 
 export async function agregarFotoAvistamiento(idAvistamiento, idUsuario, archivo, tipoCaptura) {

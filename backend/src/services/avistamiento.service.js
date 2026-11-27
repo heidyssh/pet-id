@@ -11,7 +11,10 @@ import {
   crearPuntoGeografico,
   validarIdPositivo,
 } from '../utils/ubicacion.js';
-import { generarCoincidencias } from './coincidencia.service.js';
+import {
+  generarCoincidencias,
+  registrarCoincidenciaSugerida,
+} from './coincidencia.service.js';
 
 const atributosPublicos = [
   'id_avistamiento',
@@ -93,6 +96,19 @@ export async function crearAvistamiento(
     descripcion: datos.descripcion,
     estado: 'registrado',
   });
+
+  if (datos.id_reporte_sugerido != null) {
+    try {
+      await registrarCoincidenciaSugerida(
+        avistamiento.id_avistamiento,
+        datos.id_reporte_sugerido,
+        idUsuario
+      );
+    } catch (error) {
+      await avistamiento.destroy();
+      throw error;
+    }
+  }
 
   if (generarCandidatos) {
     await generarCoincidencias(avistamiento.id_avistamiento);

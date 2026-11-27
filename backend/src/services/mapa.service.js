@@ -40,10 +40,17 @@ async function consultar(ruta, parametros) {
   return (cuerpo.features ?? []).slice(0, 8).map(limpiarResultado);
 }
 
-export function geocodificarDireccion(direccion) {
+export function geocodificarDireccion(
+  direccion,
+  cercaLatitud = 15.7835,
+  cercaLongitud = -86.7918
+) {
   return consultar('search', {
     text: direccion,
     filter: 'countrycode:hn',
+    // Geoapify sigue permitiendo resultados de todo Honduras, pero ordena
+    // primero los cercanos al mapa. Sin una referencia usamos La Ceiba.
+    bias: `proximity:${cercaLongitud},${cercaLatitud}`,
   });
 }
 
