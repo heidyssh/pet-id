@@ -671,152 +671,198 @@ class _AlertDetailSheet extends StatelessWidget {
             item['nombre_mascota'],
             item['raza'] ?? item['especie'],
           ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 220),
-      padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: const BoxDecoration(
-          color: petCream,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: accountBorder,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: photo == null
-                      ? _PhotoFallback(color: sighted ? _yellow : _pink)
-                      : Image.network(
-                          photo,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              _PhotoFallback(color: sighted ? _yellow : _pink),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (sighted ? _yellow : _pink).withValues(alpha: .2),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    sighted
-                        ? 'REPORTE DE AVISTAMIENTO'
-                        : 'ALERTA DE MASCOTA PERDIDA',
-                    style: const TextStyle(
-                      color: petInk,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 16),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 220),
+        padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: const BoxDecoration(
+            color: petCream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: accountBorder,
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title.isEmpty ? 'Mascota sin identificar' : title,
-                style: const TextStyle(
-                  color: petInk,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                [
-                  sighted
-                      ? 'Alguien vio este animal; todavía no se sabe a qué familia pertenece'
-                      : 'Es una mascota identificada y su familia la está buscando',
-                  item['referencia_lugar'],
-                  _distance(item['distancia_km']),
-                ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
-                style: const TextStyle(color: accountMuted, height: 1.35),
-              ),
-              if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
-                  .trim()
-                  .isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Text(
-                  '${item['senas_particulares'] ?? item['descripcion']}',
-                  style: const TextStyle(color: accountMuted, height: 1.4),
-                ),
-              ],
-              if (onReportSighting != null) ...[
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                  onPressed: onReportSighting,
-                  icon: const Icon(Icons.camera_alt_rounded),
-                  label: Text(
-                    '${item['nombre_mascota'] ?? ''}'.toString().trim().isEmpty
-                        ? 'Creo que vi a esta mascota'
-                        : 'Creo que vi a ${item['nombre_mascota']}',
-                  ),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(58),
-                    backgroundColor: petOrange,
-                    foregroundColor: petInk,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(19),
-                    ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ],
-              if (ownPet) ...[
                 const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDDF5EE),
-                    borderRadius: BorderRadius.circular(18),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 10,
+                    child: photo == null
+                        ? _PhotoFallback(color: sighted ? _yellow : _pink)
+                        : Image.network(
+                            photo,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _PhotoFallback(
+                              color: sighted ? _yellow : _pink,
+                            ),
+                          ),
                   ),
-                  child: const Text(
-                    'Esta alerta pertenece a tu mascota. No puedes reportar un avistamiento contra tu propia alerta. Si ya regresó, abre su ficha y márcala como encontrada.',
-                    style: TextStyle(
-                      color: Color(0xFF176D61),
-                      height: 1.4,
-                      fontWeight: FontWeight.w700,
+                ),
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (sighted ? _yellow : _pink).withValues(alpha: .2),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      sighted
+                          ? 'REPORTE DE AVISTAMIENTO'
+                          : 'ALERTA DE MASCOTA PERDIDA',
+                      style: const TextStyle(
+                        color: petInk,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: onOpenOwnPet,
-                  icon: const Icon(Icons.pets_rounded),
-                  label: const Text('Abrir ficha de mi mascota'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(58),
-                    backgroundColor: const Color(0xFF0ACAA5),
-                    foregroundColor: petInk,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(19),
-                    ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                const SizedBox(height: 10),
+                Text(
+                  title.isEmpty ? 'Mascota sin identificar' : title,
+                  style: const TextStyle(
+                    color: petInk,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  [
+                    sighted
+                        ? 'Alguien vio este animal; todavía no se sabe a qué familia pertenece'
+                        : 'Es una mascota identificada y su familia la está buscando',
+                    item['referencia_lugar'],
+                    _distance(item['distancia_km']),
+                  ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
+                  style: const TextStyle(color: accountMuted, height: 1.35),
+                ),
+                if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
+                    .trim()
+                    .isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    '${item['senas_particulares'] ?? item['descripcion']}',
+                    style: const TextStyle(color: accountMuted, height: 1.4),
+                  ),
+                ],
+                if (onReportSighting != null) ...[
+                  const SizedBox(height: 22),
+                  FilledButton.icon(
+                    onPressed: onReportSighting,
+                    icon: const Icon(Icons.camera_alt_rounded),
+                    label: Text(
+                      '${item['nombre_mascota'] ?? ''}'
+                              .toString()
+                              .trim()
+                              .isEmpty
+                          ? 'Creo que vi a esta mascota'
+                          : 'Creo que vi a ${item['nombre_mascota']}',
+                    ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(58),
+                      backgroundColor: petOrange,
+                      foregroundColor: petInk,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(19),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
+                if (ownPet) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7F8F3),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(9),
+                            child: Icon(
+                              Icons.home_rounded,
+                              color: Color(0xFF08735F),
+                              size: 21,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Esta es tu alerta',
+                                style: TextStyle(
+                                  color: petInk,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Si ya volvió a casa, actualiza su estado desde la ficha.',
+                                style: TextStyle(
+                                  color: Color(0xFF3C6760),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: onOpenOwnPet,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Gestionar alerta'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      foregroundColor: const Color(0xFF08735F),
+                      side: const BorderSide(
+                        color: Color(0xFF69D8C3),
+                        width: 2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

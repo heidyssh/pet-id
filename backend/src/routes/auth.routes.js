@@ -7,6 +7,8 @@ import {
   loginGoogle,
   me,
   actualizarMe,
+  actualizarMiFoto,
+  eliminarMiFoto,
 } from '../controllers/auth.controller.js';
 
 import {
@@ -31,6 +33,7 @@ import {
 
 import { validar } from '../middlewares/validate.middleware.js';
 import { verificarToken } from '../middlewares/auth.middleware.js';
+import { subirFoto } from '../middlewares/upload.middleware.js';
 
 import {
   registroLimiter,
@@ -67,6 +70,9 @@ router.patch(
   validar(actualizarPerfilSchema),
   actualizarMe
 );
+
+router.put('/me/foto', verificarToken, subirFoto, actualizarMiFoto);
+router.delete('/me/foto', verificarToken, eliminarMiFoto);
 
 router.post(
   '/reenviar-verificacion',

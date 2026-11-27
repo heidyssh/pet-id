@@ -1,6 +1,7 @@
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import sharp from 'sharp';
 import { Op } from 'sequelize';
 
 import { sequelize } from '../config/sequelize.js';
@@ -9,6 +10,7 @@ import { AppError } from '../utils/AppError.js';
 import { crearSesionConTokens } from './sesion.service.js';
 import { insertarOrganizacion } from './organizacion.service.js';
 import { guardarUbicacionAlertas } from './alertaUbicacion.service.js';
+import { eliminarImagen, guardarImagen } from './almacenamientoImagen.service.js';
 
 const HASH_ROUNDS = 12;
 
@@ -45,8 +47,62 @@ export function datosPublicos(usuario) {
     apellido: usuario.apellido,
     correo: usuario.correo,
     telefono: usuario.telefono,
+    foto_perfil_url: usuario.foto_perfil_url,
     activo: usuario.activo,
   };
+}
+
+export async function actualizarFotoPerfil(idUsuario, archivo) {
+  if (!archivo) throw new AppError('Selecciona una imagen', 400);
+  const usuario = await Usuario.unscoped().findByPk(idUsuario);
+  if (!usuario || !usuario.activo) {
+    throw new AppError('Usuario no autorizado', 401);
+  }
+
+  let buffer;
+  try {
+    buffer = await sharp(archivo.buffer, { failOn: 'error' })
+      .rotate()
+      .resize(800, 800, { fit: 'cover', position: 'attention' })
+      .webp({ quality: 86 })
+      .toBuffer();
+  } catch {
+    throw new AppError('La imagen no es válida o está dañada', 400);
+  }
+
+  const anterior = usuario.foto_perfil_id
+    ? { proveedor: usuario.foto_perfil_proveedor, id: usuario.foto_perfil_id }
+    : null;
+  const nueva = await guardarImagen(buffer, 'perfil');
+  try {
+    await usuario.update({
+      foto_perfil_url: nueva.url,
+      foto_perfil_proveedor: nueva.proveedor,
+      foto_perfil_id: nueva.id,
+    });
+  } catch (error) {
+    await eliminarImagen(nueva).catch(() => {});
+    throw error;
+  }
+  if (anterior) await eliminarImagen(anterior).catch(() => {});
+  return obtenerPerfil(idUsuario);
+}
+
+export async function eliminarFotoPerfil(idUsuario) {
+  const usuario = await Usuario.unscoped().findByPk(idUsuario);
+  if (!usuario || !usuario.activo) {
+    throw new AppError('Usuario no autorizado', 401);
+  }
+  const anterior = usuario.foto_perfil_id
+    ? { proveedor: usuario.foto_perfil_proveedor, id: usuario.foto_perfil_id }
+    : null;
+  await usuario.update({
+    foto_perfil_url: null,
+    foto_perfil_proveedor: null,
+    foto_perfil_id: null,
+  });
+  if (anterior) await eliminarImagen(anterior).catch(() => {});
+  return obtenerPerfil(idUsuario);
 }
 
 // ==========================================

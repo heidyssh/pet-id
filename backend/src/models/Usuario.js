@@ -41,6 +41,21 @@ export const Usuario = sequelize.define('Usuario', {
     },
   },
 
+  foto_perfil_url: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  foto_perfil_proveedor: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+
+  foto_perfil_id: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
   password_hash: {
     type: DataTypes.TEXT,
     allowNull: false,
@@ -81,7 +96,12 @@ export const Usuario = sequelize.define('Usuario', {
 
   defaultScope: {
     attributes: {
-      exclude: ['password_hash', 'google_sub'],
+      exclude: [
+        'password_hash',
+        'google_sub',
+        'foto_perfil_proveedor',
+        'foto_perfil_id',
+      ],
     },
   },
 

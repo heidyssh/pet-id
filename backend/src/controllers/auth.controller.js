@@ -4,6 +4,8 @@ import {
   iniciarSesion,
   obtenerPerfil,
   actualizarPerfil,
+  actualizarFotoPerfil,
+  eliminarFotoPerfil,
 } from '../services/auth.service.js';
 import {
   solicitarVerificacion,
@@ -67,6 +69,26 @@ export const actualizarMe = asyncHandler(async (req, res) => {
   return res.json({
     success: true,
     message: 'Perfil actualizado correctamente',
+    data: usuario,
+  });
+});
+
+export const actualizarMiFoto = asyncHandler(async (req, res) => {
+  const usuario = await actualizarFotoPerfil(req.usuario.id_usuario, req.file);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({
+    success: true,
+    message: 'Foto de perfil actualizada',
+    data: usuario,
+  });
+});
+
+export const eliminarMiFoto = asyncHandler(async (req, res) => {
+  const usuario = await eliminarFotoPerfil(req.usuario.id_usuario);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({
+    success: true,
+    message: 'Foto de perfil eliminada',
     data: usuario,
   });
 });

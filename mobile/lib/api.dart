@@ -277,6 +277,27 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> uploadProfilePhoto(XFile photo) async {
+    Future<Map<String, dynamic>> send() =>
+        api.request('PUT', '/auth/me/foto', token: _access, photo: photo);
+    try {
+      final response = await send();
+      user = Map<String, dynamic>.from(response['data'] as Map);
+    } on ApiError catch (error) {
+      if (error.status != 401) rethrow;
+      await _renew();
+      final response = await send();
+      user = Map<String, dynamic>.from(response['data'] as Map);
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteProfilePhoto() async {
+    final response = await authRequest('DELETE', '/auth/me/foto');
+    user = Map<String, dynamic>.from(response['data'] as Map);
+    notifyListeners();
+  }
+
   Future<void> _renew() async {
     final saved = await _storage.read(key: _key);
     if (saved == null) throw const ApiError('Tu sesión venció.', 401);

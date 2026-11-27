@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'account_layout.dart';
@@ -655,11 +656,8 @@ BoxDecoration _cardDecoration({
 
 BoxDecoration _profileSurface({Color color = Colors.white}) => BoxDecoration(
   color: color,
-  borderRadius: BorderRadius.circular(24),
-  border: Border.all(color: const Color(0xFFF4DACE)),
-  boxShadow: const [
-    BoxShadow(color: Color(0x120F2F2C), blurRadius: 22, offset: Offset(0, 8)),
-  ],
+  borderRadius: BorderRadius.circular(20),
+  border: Border.all(color: const Color(0xFFEFE5E0)),
 );
 
 class _BellButton extends StatelessWidget {
@@ -1616,7 +1614,7 @@ class _ProfilePageState extends State<_ProfilePage> {
 
   void _help() {
     _showProfileSheet(
-      title: 'Ayuda y soporte',
+      title: 'Centro de ayuda',
       child: const Column(
         children: [
           ExpansionTile(
@@ -1652,11 +1650,6 @@ class _ProfilePageState extends State<_ProfilePage> {
               ),
             ],
           ),
-          _InfoRow(
-            icon: Icons.support_agent_rounded,
-            title: 'Soporte PetID',
-            subtitle: 'soporte@petid.app',
-          ),
         ],
       ),
     );
@@ -1668,31 +1661,28 @@ class _ProfilePageState extends State<_ProfilePage> {
       useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: petCream,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 26,
-              offset: Offset(0, -8),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            18 + petSheetBottomInset(context),
+      builder: (_) => SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 18),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: petCream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 26,
+                offset: Offset(0, -8),
+              ),
+            ],
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * .78,
+              maxHeight: MediaQuery.sizeOf(context).height * .84,
             ),
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1792,20 +1782,16 @@ class _ProfilePageState extends State<_ProfilePage> {
           ),
           const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.white, Color(0xFFFFF5EE)],
-              ),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: const Color(0xFFF4DACE)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFF1DDD3)),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x160F2F2C),
-                  blurRadius: 24,
-                  offset: Offset(0, 9),
+                  color: Color(0x100F2F2C),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
                 ),
               ],
             ),
@@ -1813,32 +1799,12 @@ class _ProfilePageState extends State<_ProfilePage> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFA05E), petOrange],
-                        ),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x26000000),
-                            blurRadius: 12,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
+                    _ProfileAvatar(
+                      initials: initials,
+                      photo: context.read<PetIdApi>().imageUrl(
+                        user['foto_perfil_url'],
                       ),
-                      child: Text(
-                        initials.isEmpty ? 'P' : initials.toUpperCase(),
-                        style: const TextStyle(
-                          color: petInk,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                      size: 72,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1868,24 +1834,20 @@ class _ProfilePageState extends State<_ProfilePage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Editar perfil',
+                    TextButton(
                       onPressed: _editProfile,
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFEBDD),
+                      style: TextButton.styleFrom(
                         foregroundColor: petDarkOrange,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900),
                       ),
-                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      child: const Text('Editar'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .72),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
                       Expanded(
@@ -1985,8 +1947,8 @@ class _ProfilePageState extends State<_ProfilePage> {
                 _ProfileSetting(
                   icon: Icons.help_outline_rounded,
                   color: const Color(0xFFCFF5EA),
-                  title: 'Ayuda y soporte',
-                  subtitle: 'Preguntas frecuentes y contacto',
+                  title: 'Centro de ayuda',
+                  subtitle: 'Resuelve dudas sobre alertas y avistamientos',
                   onTap: _help,
                   last: true,
                 ),
@@ -2049,6 +2011,66 @@ class _RoleBadge extends StatelessWidget {
   }
 }
 
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.initials,
+    required this.photo,
+    this.size = 72,
+  });
+
+  final String initials;
+  final String? photo;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: const EdgeInsets.all(3),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x1F0F2F2C),
+          blurRadius: 14,
+          offset: Offset(0, 6),
+        ),
+      ],
+    ),
+    child: ClipOval(
+      child: ColoredBox(
+        color: const Color(0xFFFFE4D2),
+        child: photo == null
+            ? Center(
+                child: Text(
+                  initials.isEmpty ? 'P' : initials.toUpperCase(),
+                  style: TextStyle(
+                    color: petDarkOrange,
+                    fontSize: size * .29,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              )
+            : Image.network(
+                photo!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Center(
+                  child: Text(
+                    initials.isEmpty ? 'P' : initials.toUpperCase(),
+                    style: TextStyle(
+                      color: petDarkOrange,
+                      fontSize: size * .29,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    ),
+  );
+}
+
 class _ProfileStat extends StatelessWidget {
   const _ProfileStat(this.value, this.label);
   final String value;
@@ -2108,26 +2130,19 @@ class _LocationPreferencesCard extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: accountBorder, width: 1.5),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x100F2F2C),
-          blurRadius: 18,
-          offset: Offset(0, 7),
-        ),
-      ],
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFEFE5E0)),
     ),
     child: Column(
       children: [
         Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: _yellow.withValues(alpha: .72),
-                borderRadius: BorderRadius.circular(15),
+                color: const Color(0xFFFFF0D0),
+                shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.notifications_none_rounded,
@@ -2163,51 +2178,41 @@ class _LocationPreferencesCard extends StatelessWidget {
           ],
         ),
         if (enabled) ...[
-          const SizedBox(height: 13),
-          Material(
-            color: const Color(0xFFFFF7F1),
-            borderRadius: BorderRadius.circular(17),
-            child: InkWell(
-              onTap: busy ? null : onRefresh,
-              borderRadius: BorderRadius.circular(17),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: petDarkOrange,
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1, color: Color(0xFFEFE5E0)),
+          ),
+          InkWell(
+            onTap: busy ? null : onRefresh,
+            borderRadius: BorderRadius.circular(14),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on_outlined, color: petDarkOrange),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    busy ? 'Actualizando ubicación...' : locationLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: petInk,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        busy ? 'Actualizando ubicación...' : locationLabel,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: petInk,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (busy)
-                      const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      const Icon(
-                        Icons.refresh_rounded,
-                        color: accountMuted,
-                        size: 20,
-                      ),
-                  ],
+                  ),
                 ),
-              ),
+                if (busy)
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(
+                    Icons.refresh_rounded,
+                    color: accountMuted,
+                    size: 20,
+                  ),
+              ],
             ),
           ),
         ],
@@ -2337,12 +2342,9 @@ class _ProfileSetting extends StatelessWidget {
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
         leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(13),
-          ),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           child: Icon(icon, color: petInk),
         ),
         title: Text(
@@ -2403,6 +2405,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   late final TextEditingController _name;
   late final TextEditingController _surname;
   late final TextEditingController _phone;
+  final _picker = ImagePicker();
+  XFile? _newPhoto;
+  bool _removePhoto = false;
   bool _busy = false;
   String? _error;
 
@@ -2432,6 +2437,68 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     return null;
   }
 
+  Future<void> _choosePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: petCream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Cambiar foto',
+                style: TextStyle(
+                  color: petInk,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Elegir de la galería'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Tomar una foto'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null) return;
+    final photo = await _picker.pickImage(
+      source: source,
+      imageQuality: 88,
+      maxWidth: 1600,
+      maxHeight: 1600,
+    );
+    if (photo != null && mounted) {
+      setState(() {
+        _newPhoto = photo;
+        _removePhoto = false;
+      });
+    }
+  }
+
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     if (!_form.currentState!.validate()) return;
@@ -2440,7 +2507,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       _error = null;
     });
     try {
-      await context.read<Session>().updateProfile({
+      final session = context.read<Session>();
+      if (_newPhoto != null) {
+        await session.uploadProfilePhoto(_newPhoto!);
+      } else if (_removePhoto) {
+        await session.deleteProfilePhoto();
+      }
+      await session.updateProfile({
         'nombre': _name.text.trim(),
         'apellido': _surname.text.trim(),
         'telefono': _phone.text.replaceAll(RegExp(r'[\s-]'), ''),
@@ -2460,96 +2533,184 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedPadding(
-    duration: const Duration(milliseconds: 220),
-    padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
-    child: Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-      decoration: const BoxDecoration(
-        color: petCream,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Form(
-        key: _form,
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: accountBorder,
-                    borderRadius: BorderRadius.circular(99),
+  Widget build(BuildContext context) {
+    final user = context.watch<Session>().user ?? const {};
+    final initials = [user['nombre'], user['apellido']]
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .map((value) => value[0])
+        .take(2)
+        .join();
+    final currentPhoto = context.read<PetIdApi>().imageUrl(
+      user['foto_perfil_url'],
+    );
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 26),
+          decoration: const BoxDecoration(
+            color: petCream,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Form(
+            key: _form,
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: accountBorder,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Editar perfil',
+                    style: TextStyle(
+                      color: petInk,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        if (_newPhoto != null)
+                          FutureBuilder<List<int>>(
+                            future: _newPhoto!.readAsBytes(),
+                            builder: (_, snapshot) => Container(
+                              width: 96,
+                              height: 96,
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: ClipOval(
+                                child: snapshot.hasData
+                                    ? Image.memory(
+                                        Uint8List.fromList(snapshot.data!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : const ColoredBox(
+                                        color: Color(0xFFFFE4D2),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          )
+                        else
+                          _ProfileAvatar(
+                            initials: initials,
+                            photo: _removePhoto ? null : currentPhoto,
+                            size: 96,
+                          ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: IconButton.filled(
+                            tooltip: 'Cambiar foto',
+                            onPressed: _busy ? null : _choosePhoto,
+                            style: IconButton.styleFrom(
+                              backgroundColor: petOrange,
+                              foregroundColor: petInk,
+                              side: const BorderSide(
+                                color: Colors.white,
+                                width: 3,
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if ((currentPhoto != null && !_removePhoto) ||
+                      _newPhoto != null)
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
+                              _newPhoto = null;
+                              _removePhoto = true;
+                            }),
+                      child: const Text('Quitar foto'),
+                    )
+                  else
+                    const SizedBox(height: 12),
+                  AccountField(
+                    'Nombres',
+                    TextFormField(
+                      controller: _name,
+                      enabled: !_busy,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: accountInput('Nombres'),
+                      validator: _validateName,
+                    ),
+                  ),
+                  AccountField(
+                    'Apellidos',
+                    TextFormField(
+                      controller: _surname,
+                      enabled: !_busy,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: accountInput('Apellidos'),
+                      validator: _validateName,
+                    ),
+                  ),
+                  AccountField(
+                    'Teléfono',
+                    TextFormField(
+                      controller: _phone,
+                      enabled: !_busy,
+                      keyboardType: TextInputType.phone,
+                      decoration: accountInput('+504 0000-0000'),
+                      validator: (value) {
+                        final compact = (value ?? '').replaceAll(
+                          RegExp(r'[\s-]'),
+                          '',
+                        );
+                        return RegExp(
+                              r'^(?:\+504)?[2389][0-9]{7}$',
+                            ).hasMatch(compact)
+                            ? null
+                            : 'Escribe un teléfono válido de Honduras.';
+                      },
+                    ),
+                  ),
+                  if (_error != null) accountError(context, _error!),
+                  const SizedBox(height: 14),
+                  AccountButton(
+                    _busy ? 'Guardando...' : 'Guardar cambios',
+                    loading: _busy,
+                    onPressed: _busy ? null : _save,
+                  ),
+                ],
               ),
-              const SizedBox(height: 18),
-              const Text(
-                'Editar perfil',
-                style: TextStyle(
-                  color: petInk,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 18),
-              AccountField(
-                'Nombres',
-                TextFormField(
-                  controller: _name,
-                  enabled: !_busy,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: accountInput('Nombres'),
-                  validator: _validateName,
-                ),
-              ),
-              AccountField(
-                'Apellidos',
-                TextFormField(
-                  controller: _surname,
-                  enabled: !_busy,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: accountInput('Apellidos'),
-                  validator: _validateName,
-                ),
-              ),
-              AccountField(
-                'Teléfono',
-                TextFormField(
-                  controller: _phone,
-                  enabled: !_busy,
-                  keyboardType: TextInputType.phone,
-                  decoration: accountInput('+504 0000-0000'),
-                  validator: (value) {
-                    final compact = (value ?? '').replaceAll(
-                      RegExp(r'[\s-]'),
-                      '',
-                    );
-                    return RegExp(
-                          r'^(?:\+504)?[2389][0-9]{7}$',
-                        ).hasMatch(compact)
-                        ? null
-                        : 'Escribe un teléfono válido de Honduras.';
-                  },
-                ),
-              ),
-              if (_error != null) accountError(context, _error!),
-              const SizedBox(height: 14),
-              AccountButton(
-                _busy ? 'Guardando...' : 'Guardar cambios',
-                loading: _busy,
-                onPressed: _busy ? null : _save,
-              ),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _NotificationsSheet extends StatefulWidget {
