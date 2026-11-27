@@ -17,6 +17,7 @@ import 'welcome.dart';
 const _mint = Color(0xFF12CFA5);
 const _mintDark = Color(0xFF08735F);
 const _pink = Color(0xFFFF6B98);
+const _pinkDark = Color(0xFFD93A6E);
 const _peach = Color(0xFFFFDDC5);
 
 class PetDetailPage extends StatefulWidget {
@@ -167,6 +168,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => AnimatedPadding(
         duration: const Duration(milliseconds: 220),
@@ -224,8 +226,8 @@ class _PetDetailPageState extends State<PetDetailPage> {
                 label: const Text('Sí, ya está en casa'),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
-                  backgroundColor: Color(0xFF0ACAA5),
-                  foregroundColor: petInk,
+                  backgroundColor: Color(0xFF087968),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),
@@ -1068,8 +1070,8 @@ class _PhotoManagerSheetState extends State<_PhotoManagerSheet> {
               ),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(56),
-                backgroundColor: petOrange,
-                foregroundColor: petInk,
+                backgroundColor: petDarkOrange,
+                foregroundColor: Colors.white,
                 disabledBackgroundColor: accountBorder,
                 disabledForegroundColor: accountMuted,
                 shape: RoundedRectangleBorder(
@@ -2141,8 +2143,8 @@ class _LostButton extends StatelessWidget {
               label: const Text('Revisar posibles coincidencias'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(58),
-                foregroundColor: petInk,
-                backgroundColor: _pink,
+                foregroundColor: Colors.white,
+                backgroundColor: _pinkDark,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -2173,8 +2175,8 @@ class _LostButton extends StatelessWidget {
             label: Text('Reportar a $name como perdida'),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(62),
-              foregroundColor: petInk,
-              backgroundColor: _pink,
+              foregroundColor: Colors.white,
+              backgroundColor: _pinkDark,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

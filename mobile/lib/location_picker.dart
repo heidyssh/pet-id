@@ -408,8 +408,8 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
                     label: const Text('Confirmar ubicación'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(56),
-                      backgroundColor: petOrange,
-                      foregroundColor: petInk,
+                      backgroundColor: petDarkOrange,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),

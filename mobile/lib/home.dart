@@ -18,7 +18,6 @@ import 'welcome.dart';
 
 const _pink = Color(0xFFFF6B98);
 const _pinkDark = Color(0xFFD93A6E);
-const _pinkShadow = Color(0xFFE0457A);
 const _peach = Color(0xFFFDE1D1);
 const _yellow = Color(0xFFFFE08A);
 const _mint = Color(0xFFBDEFD8);
@@ -184,16 +183,19 @@ class _CitizenHomeState extends State<CitizenHome> {
     } else {
       selected = await showModalBottomSheet<Map<String, dynamic>>(
         context: context,
+        useRootNavigator: true,
+        useSafeArea: true,
+        isScrollControlled: true,
         backgroundColor: petCream,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        builder: (sheetContext) => SafeArea(
+        builder: (sheetContext) => FractionallySizedBox(
+          heightFactor: .72,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
@@ -210,39 +212,45 @@ class _CitizenHomeState extends State<CitizenHome> {
                   style: TextStyle(color: accountMuted),
                 ),
                 const SizedBox(height: 15),
-                for (final pet in available)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 9),
-                    child: ListTile(
-                      onTap: () => Navigator.of(sheetContext).pop(pet),
-                      tileColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        side: const BorderSide(color: accountBorder, width: 2),
-                      ),
-                      leading: Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: _peach,
-                          borderRadius: BorderRadius.circular(14),
+                Expanded(
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: available.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 9),
+                    itemBuilder: (_, index) {
+                      final pet = available[index];
+                      return ListTile(
+                        onTap: () => Navigator.of(sheetContext).pop(pet),
+                        tileColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          side: const BorderSide(color: accountBorder),
                         ),
-                        child: const Icon(
-                          Icons.pets_rounded,
-                          color: petDarkOrange,
+                        leading: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: _peach,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.pets_rounded,
+                            color: petDarkOrange,
+                          ),
                         ),
-                      ),
-                      title: Text(
-                        '${pet['nombre'] ?? 'Mascota'}',
-                        style: const TextStyle(
-                          color: petInk,
-                          fontWeight: FontWeight.w900,
+                        title: Text(
+                          '${pet['nombre'] ?? 'Mascota'}',
+                          style: const TextStyle(
+                            color: petInk,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      subtitle: Text(_speciesLabel(pet)),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                    ),
+                        subtitle: Text(_speciesLabel(pet)),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                      );
+                    },
                   ),
+                ),
               ],
             ),
           ),
@@ -267,6 +275,8 @@ class _CitizenHomeState extends State<CitizenHome> {
   Future<void> _openNotifications() async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: petCream,
       shape: const RoundedRectangleBorder(
@@ -544,8 +554,8 @@ class _CitizenHomeState extends State<CitizenHome> {
               icon: const Icon(Icons.add_rounded),
               label: const Text('Registrar'),
               style: FilledButton.styleFrom(
-                backgroundColor: petOrange,
-                foregroundColor: petInk,
+                backgroundColor: petDarkOrange,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -650,8 +660,10 @@ BoxDecoration _cardDecoration({
 }) => BoxDecoration(
   color: color,
   borderRadius: BorderRadius.circular(22),
-  border: Border.all(color: edge, width: 2),
-  boxShadow: [BoxShadow(color: edge, offset: const Offset(0, 4))],
+  border: Border.all(color: edge),
+  boxShadow: const [
+    BoxShadow(color: Color(0x100F2F2C), blurRadius: 16, offset: Offset(0, 6)),
+  ],
 );
 
 BoxDecoration _profileSurface({Color color = Colors.white}) => BoxDecoration(
@@ -764,7 +776,11 @@ class _LostPetCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(26),
               boxShadow: const [
-                BoxShadow(color: _pinkShadow, offset: Offset(0, 6)),
+                BoxShadow(
+                  color: Color(0x33D93A6E),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
               ],
             ),
             child: Row(
@@ -1575,6 +1591,7 @@ class _ProfilePageState extends State<_ProfilePage> {
   Future<void> _editProfile() async {
     final updated = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -1658,10 +1675,11 @@ class _ProfilePageState extends State<_ProfilePage> {
   void _showProfileSheet({required String title, required Widget child}) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         top: false,
         minimum: const EdgeInsets.only(bottom: 18),
         child: Container(
@@ -1702,12 +1720,25 @@ class _ProfilePageState extends State<_ProfilePage> {
                     title,
                     style: const TextStyle(
                       color: petInk,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 14),
-                  child,
+                  Theme(
+                    data: Theme.of(sheetContext).copyWith(
+                      dividerColor: Colors.transparent,
+                      expansionTileTheme: const ExpansionTileThemeData(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: EdgeInsets.only(bottom: 8),
+                        iconColor: accountMuted,
+                        collapsedIconColor: accountMuted,
+                        textColor: petInk,
+                        collapsedTextColor: petInk,
+                      ),
+                    ),
+                    child: child,
+                  ),
                 ],
               ),
             ),
@@ -1925,7 +1956,7 @@ class _ProfilePageState extends State<_ProfilePage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            'Cuenta',
+            'Configuración',
             style: TextStyle(
               color: petInk,
               fontSize: 19,
@@ -1938,17 +1969,21 @@ class _ProfilePageState extends State<_ProfilePage> {
             child: Column(
               children: [
                 _ProfileSetting(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Datos personales',
+                  subtitle: 'Nombre, teléfono y foto de perfil',
+                  onTap: _editProfile,
+                ),
+                _ProfileSetting(
                   icon: Icons.lock_outline_rounded,
-                  color: const Color(0xFFF2ECFF),
-                  title: 'Privacidad y contacto',
-                  subtitle: 'Revisa tus datos y su visibilidad',
+                  title: 'Privacidad',
+                  subtitle: 'Contacto y visibilidad de tus datos',
                   onTap: _privacy,
                 ),
                 _ProfileSetting(
                   icon: Icons.help_outline_rounded,
-                  color: const Color(0xFFCFF5EA),
                   title: 'Centro de ayuda',
-                  subtitle: 'Resuelve dudas sobre alertas y avistamientos',
+                  subtitle: 'Alertas, avistamientos y reconocimiento',
                   onTap: _help,
                   last: true,
                 ),
@@ -2322,14 +2357,12 @@ class _ProfileAddPet extends StatelessWidget {
 class _ProfileSetting extends StatelessWidget {
   const _ProfileSetting({
     required this.icon,
-    required this.color,
     required this.title,
     required this.subtitle,
     this.onTap,
     this.last = false,
   });
   final IconData icon;
-  final Color color;
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
@@ -2340,16 +2373,15 @@ class _ProfileSetting extends StatelessWidget {
     children: [
       ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Icon(icon, color: petInk),
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+        leading: Icon(icon, color: petDarkOrange, size: 24),
         title: Text(
           title,
-          style: const TextStyle(color: petInk, fontWeight: FontWeight.w900),
+          style: const TextStyle(
+            color: petInk,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         subtitle: Text(
           subtitle,
@@ -2357,14 +2389,18 @@ class _ProfileSetting extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: accountMuted, fontSize: 12),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: accountMuted,
+          size: 21,
+        ),
       ),
       if (!last)
         const Divider(
           height: 1,
-          indent: 68,
-          endIndent: 14,
-          color: accountBorder,
+          indent: 58,
+          endIndent: 18,
+          color: Color(0xFFEFE5E0),
         ),
     ],
   );
@@ -2382,14 +2418,23 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: CircleAvatar(
-      backgroundColor: const Color(0xFFFFEBDD),
-      foregroundColor: petDarkOrange,
-      child: Icon(icon),
+    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+    leading: Icon(icon, color: petDarkOrange, size: 24),
+    title: Text(
+      title,
+      style: const TextStyle(
+        color: petInk,
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+      ),
     ),
-    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-    subtitle: Text(subtitle),
+    subtitle: Padding(
+      padding: const EdgeInsets.only(top: 3),
+      child: Text(
+        subtitle,
+        style: const TextStyle(color: accountMuted, height: 1.3),
+      ),
+    ),
   );
 }
 
@@ -2440,6 +2485,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   Future<void> _choosePhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      useRootNavigator: true,
       useSafeArea: true,
       backgroundColor: petCream,
       shape: const RoundedRectangleBorder(
@@ -2627,8 +2673,8 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                             tooltip: 'Cambiar foto',
                             onPressed: _busy ? null : _choosePhoto,
                             style: IconButton.styleFrom(
-                              backgroundColor: petOrange,
-                              foregroundColor: petInk,
+                              backgroundColor: petDarkOrange,
+                              foregroundColor: Colors.white,
                               side: const BorderSide(
                                 color: Colors.white,
                                 width: 3,

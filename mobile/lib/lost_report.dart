@@ -12,6 +12,7 @@ import 'motion.dart';
 import 'welcome.dart';
 
 const _pink = Color(0xFFFF6395);
+const _pinkDark = Color(0xFFD93A6E);
 const _pinkSoft = Color(0xFFFFE5EE);
 const _peach = Color(0xFFFFDDC5);
 
@@ -382,9 +383,9 @@ class _LostReportPageState extends State<LostReportPage> {
                 border: Border.all(color: Colors.white, width: 4),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x44000000),
-                    blurRadius: 8,
-                    offset: Offset(3, 5),
+                    color: Color(0x30000000),
+                    blurRadius: 14,
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
@@ -554,8 +555,8 @@ class _LostReportPageState extends State<LostReportPage> {
               label: Text(_sending ? 'Enviando alerta...' : 'Enviar alerta'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(60),
-                backgroundColor: _pink,
-                foregroundColor: petInk,
+                backgroundColor: _pinkDark,
+                foregroundColor: Colors.white,
                 disabledBackgroundColor: _pinkSoft,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),

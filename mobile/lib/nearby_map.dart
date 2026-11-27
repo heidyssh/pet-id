@@ -165,33 +165,37 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     final ownershipReady = sighted || widget.ownPetsLoaded;
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _AlertDetailSheet(
-        item: item,
-        ownPet: ownPet,
-        onOpenOwnPet: ownPet && widget.onOpenOwnPet != null
-            ? () async {
-                Navigator.pop(sheetContext);
-                await widget.onOpenOwnPet!(item);
-                if (mounted) await _load(askPermission: false);
-              }
-            : null,
-        onReportSighting: sighted || ownPet || !ownershipReady
-            ? null
-            : () {
-                Navigator.pop(sheetContext);
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SightingForm(
-                      signedIn: true,
-                      startWithCamera: true,
-                      suggestedLostReport: item,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: .92,
+        child: _AlertDetailSheet(
+          item: item,
+          ownPet: ownPet,
+          onOpenOwnPet: ownPet && widget.onOpenOwnPet != null
+              ? () async {
+                  Navigator.pop(sheetContext);
+                  await widget.onOpenOwnPet!(item);
+                  if (mounted) await _load(askPermission: false);
+                }
+              : null,
+          onReportSighting: sighted || ownPet || !ownershipReady
+              ? null
+              : () {
+                  Navigator.pop(sheetContext);
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SightingForm(
+                        signedIn: true,
+                        startWithCamera: true,
+                        suggestedLostReport: item,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+        ),
       ),
     );
   }
@@ -781,8 +785,8 @@ class _AlertDetailSheet extends StatelessWidget {
                     ),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(58),
-                      backgroundColor: petOrange,
-                      foregroundColor: petInk,
+                      backgroundColor: petDarkOrange,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(19),
                       ),

@@ -33,6 +33,8 @@ class AppSelectField<T> extends StatelessWidget {
 
   Future<T?> _open(BuildContext context) => showModalBottomSheet<T>(
     context: context,
+    useRootNavigator: true,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (context) => SafeArea(

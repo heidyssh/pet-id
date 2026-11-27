@@ -306,9 +306,15 @@ class AccountButton extends StatelessWidget {
     final button = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Color(0x44FF8D42), offset: Offset(4, 4)),
-        ],
+        boxShadow: primary
+            ? const [
+                BoxShadow(
+                  color: Color(0x2EAE4B04),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
+                ),
+              ]
+            : const [],
       ),
       child: OutlinedButton(
         onPressed: onPressed == null
@@ -320,12 +326,12 @@ class AccountButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-          foregroundColor: petInk,
-          backgroundColor: primary ? petOrange : Colors.white,
+          foregroundColor: primary ? Colors.white : petDarkOrange,
+          backgroundColor: primary ? petDarkOrange : Colors.white,
           disabledBackgroundColor: accountBorder,
           side: BorderSide(
-            color: primary ? const Color(0xFFE27935) : accountBorder,
-            width: 2,
+            color: primary ? petDarkOrange : accountBorder,
+            width: primary ? 0 : 1.5,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -345,7 +351,7 @@ class AccountButton extends StatelessWidget {
                   dimension: 17,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.2,
-                    color: primary ? petInk : petDarkOrange,
+                    color: primary ? Colors.white : petDarkOrange,
                   ),
                 ),
                 const SizedBox(width: 9),

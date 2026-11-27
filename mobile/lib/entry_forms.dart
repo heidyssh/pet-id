@@ -1962,13 +1962,13 @@ class _ReportSubmitButton extends StatelessWidget {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(20),
       gradient: const LinearGradient(
-        colors: [Color(0xFFFFA052), Color(0xFFFF823D)],
+        colors: [Color(0xFFC85B0A), petDarkOrange],
       ),
       boxShadow: const [
         BoxShadow(
-          color: Color(0x3DFF7D32),
+          color: Color(0x2EAE4B04),
           blurRadius: 16,
-          offset: Offset(0, 7),
+          offset: Offset(0, 6),
         ),
       ],
     ),
@@ -1977,7 +1977,10 @@ class _ReportSubmitButton extends StatelessWidget {
       icon: loading
           ? const SizedBox.square(
               dimension: 19,
-              child: CircularProgressIndicator(strokeWidth: 2.4, color: petInk),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                color: Colors.white,
+              ),
             )
           : const Icon(Icons.send_rounded),
       label: AnimatedSwitcher(
@@ -1988,7 +1991,7 @@ class _ReportSubmitButton extends StatelessWidget {
         minimumSize: const Size.fromHeight(60),
         backgroundColor: Colors.transparent,
         disabledBackgroundColor: Colors.transparent,
-        foregroundColor: petInk,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
       ),

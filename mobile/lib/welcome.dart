@@ -77,8 +77,9 @@ class WelcomeScreen extends StatelessWidget {
                                       ),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Color(0xFFFFD5BB),
-                                          offset: Offset(3, 3),
+                                          color: Color(0x3DD96B22),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 4),
                                         ),
                                       ],
                                     ),
@@ -201,7 +202,11 @@ class WelcomeScreen extends StatelessWidget {
         decoration: ShapeDecoration(
           shape: shape,
           shadows: const [
-            BoxShadow(color: Color(0xFFFFD9C4), offset: Offset(4, 4)),
+            BoxShadow(
+              color: Color(0x33AE4B04),
+              blurRadius: 14,
+              offset: Offset(0, 6),
+            ),
           ],
         ),
         child: OutlinedButton(
@@ -210,8 +215,8 @@ class WelcomeScreen extends StatelessWidget {
             _open(context, page);
           },
           style: OutlinedButton.styleFrom(
-            foregroundColor: primary ? petInk : petDarkOrange,
-            backgroundColor: primary ? petOrange : Colors.white,
+            foregroundColor: primary ? Colors.white : petDarkOrange,
+            backgroundColor: primary ? petDarkOrange : Colors.white,
             side: BorderSide(
               color: primary ? const Color(0xFFE27935) : petOrange,
               width: 2.4 * scale,
@@ -382,7 +387,11 @@ class _HeroPanel extends StatelessWidget {
         border: Border.all(color: _edge, width: 2.4 * scale),
         borderRadius: BorderRadius.circular(16 * scale),
         boxShadow: const [
-          BoxShadow(color: Color(0x66FFD3B7), offset: Offset(4, 4)),
+          BoxShadow(
+            color: Color(0x1F0F2F2C),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Row(

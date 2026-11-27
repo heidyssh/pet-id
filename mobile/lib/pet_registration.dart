@@ -227,6 +227,7 @@ class _PetRegistrationPageState extends State<PetRegistrationPage> {
     if (_busy) return;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      useSafeArea: true,
       backgroundColor: petCream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),

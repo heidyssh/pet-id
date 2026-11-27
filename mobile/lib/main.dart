@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'api.dart';
 import 'home.dart';
 import 'motion.dart';
+import 'pet_theme.dart';
 import 'welcome.dart';
 
 void main() => runApp(const PetIdApp());
@@ -35,27 +36,7 @@ class _PetIdAppState extends State<PetIdApp> {
         child: MaterialApp(
           title: 'PetID',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: petOrange,
-              primary: petDarkOrange,
-              onPrimary: Colors.white,
-            ),
-            scaffoldBackgroundColor: petCream,
-            // Todas las pantallas, actuales y nuevas, entran con la misma
-            // animación.
-            pageTransitionsTheme: const PageTransitionsTheme(
-              builders: {
-                TargetPlatform.android: PetPageTransitions(),
-                TargetPlatform.iOS: PetPageTransitions(),
-              },
-            ),
-            inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
+          theme: petIdTheme(),
           home: const _Entry(),
         ),
       ),
