@@ -331,6 +331,7 @@ class _PetDetailPageState extends State<PetDetailPage> {
     return Scaffold(
       backgroundColor: petCream,
       body: SafeArea(
+        top: false,
         left: false,
         right: false,
         bottom: false,
@@ -375,9 +376,9 @@ class _PetDetailPageState extends State<PetDetailPage> {
                           onAction: _load,
                         ),
                       ],
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 16),
                       Reveal(order: 1, child: _facts()),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Reveal(order: 2, child: _marks()),
                       const SizedBox(height: 26),
                       Reveal(order: 3, child: _clinical()),
@@ -403,115 +404,122 @@ class _PetDetailPageState extends State<PetDetailPage> {
     );
   }
 
-  Widget _hero(List<String> photos) => SizedBox(
-    height: 330,
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        if (photos.isEmpty)
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
-              SizedBox(height: 12),
-              Text(
-                'Foto de la mascota',
-                style: TextStyle(
-                  color: petDarkOrange,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+  Widget _hero(List<String> photos) {
+    final topInset = MediaQuery.viewPaddingOf(context).top;
+    return SizedBox(
+      height: 330 + topInset,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (photos.isEmpty)
+            const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.image_outlined, color: petDarkOrange, size: 62),
+                SizedBox(height: 12),
+                Text(
+                  'Foto de la mascota',
+                  style: TextStyle(
+                    color: petDarkOrange,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-            ],
-          )
-        else
-          PageView.builder(
-            physics: const BouncingScrollPhysics(),
-            pageSnapping: true,
-            itemCount: photos.length,
-            onPageChanged: (index) {
-              HapticFeedback.selectionClick();
-              setState(() => _photoIndex = index);
-            },
-            itemBuilder: (_, index) => AnimatedScale(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              scale: index == _photoIndex ? 1 : .97,
-              child: Image.network(
-                photos[index],
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: _peach,
-                  child: Center(
-                    child: Icon(
-                      Icons.pets_rounded,
-                      color: petDarkOrange,
-                      size: 70,
+              ],
+            )
+          else
+            ClipRect(
+              child: ColoredBox(
+                color: petInk,
+                child: PageView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  pageSnapping: true,
+                  itemCount: photos.length,
+                  onPageChanged: (index) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _photoIndex = index);
+                  },
+                  itemBuilder: (_, index) => Image.network(
+                    photos[index],
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.high,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => const ColoredBox(
+                      color: _peach,
+                      child: Center(
+                        child: Icon(
+                          Icons.pets_rounded,
+                          color: petDarkOrange,
+                          size: 70,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        const IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x55000000), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 18,
-          left: 18,
-          right: 18,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _OfflineBadge(
-                  key: ValueKey((_offlineReady, _loading)),
-                  ready: _offlineReady,
-                  loading: _loading,
+          const IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x55000000), Colors.transparent],
                 ),
               ),
-            ],
-          ),
-        ),
-        if (photos.length > 1)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 18,
-            child: IgnorePointer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var index = 0; index < photos.length; index++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      width: index == _photoIndex ? 22 : 7,
-                      height: 7,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: index == _photoIndex
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: .55),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                ],
-              ),
             ),
           ),
-      ],
-    ),
-  );
+          Positioned(
+            top: topInset + 12,
+            left: 18,
+            right: 18,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _TopButton(icon: Icons.chevron_left_rounded, onPressed: _close),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _OfflineBadge(
+                    key: ValueKey((_offlineReady, _loading)),
+                    ready: _offlineReady,
+                    loading: _loading,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (photos.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 18,
+              child: IgnorePointer(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var index = 0; index < photos.length; index++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: index == _photoIndex ? 22 : 7,
+                        height: 7,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          color: index == _photoIndex
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: .55),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _identity(bool lost) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,

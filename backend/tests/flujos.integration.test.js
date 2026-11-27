@@ -184,7 +184,7 @@ try {
       true,
       true
     ),
-    /proveedor de detección visual no está configurado/i
+    /(reconocimiento visual no está disponible|proveedor de detección visual no está configurado)/i
   );
   assert.equal(
     await modelos.FotoMascota.count({ where: { id_mascota: mascota.id_mascota } }),

@@ -4,7 +4,6 @@ import {
   listarAvistamientos,
   listarMisAvistamientos,
   obtenerAvistamiento,
-  asignarEspecieDetectada,
 } from '../services/avistamiento.service.js';
 
 import {
@@ -131,13 +130,6 @@ async function procesarEscaneo(req, res, idUsuario) {
       req.file,
       req.body.tipo_captura
     );
-
-    if (foto.deteccion) {
-      await asignarEspecieDetectada(
-        avistamiento.id_avistamiento,
-        foto.deteccion.etiqueta
-      );
-    }
 
     const resultado = foto.vector_generado
       ? await generarCoincidenciasVisuales(avistamiento.id_avistamiento, foto.id_foto)

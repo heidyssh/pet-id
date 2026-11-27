@@ -3,7 +3,6 @@ import {
   agregarFotoMascota,
   agregarFotoAvistamiento,
 } from '../services/foto.service.js';
-import { asignarEspecieDetectada } from '../services/avistamiento.service.js';
 import { generarCoincidenciasVisuales } from '../services/coincidencia.service.js';
 
 export const subirFotoMascota = asyncHandler(async (req, res) => {
@@ -28,12 +27,6 @@ export const subirFotoAvistamiento = asyncHandler(async (req, res) => {
     req.file,
     req.body.tipo_captura
   );
-  if (foto.deteccion) {
-    await asignarEspecieDetectada(
-      req.params.idAvistamiento,
-      foto.deteccion.etiqueta
-    );
-  }
   const coincidencias = foto.vector_generado
     ? await generarCoincidenciasVisuales(req.params.idAvistamiento, foto.id_foto)
     : { total: 0, coincidencias: [], procesamiento: 'sin_vector_visual' };

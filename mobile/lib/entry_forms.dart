@@ -1223,10 +1223,8 @@ class _SightingFormState extends _FormState<SightingForm> {
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: petCream,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
         builder: (_) => _ScanResultSheet(result: result),
       );
     } else {
@@ -1374,142 +1372,155 @@ class _ScanResultSheet extends StatelessWidget {
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       padding: EdgeInsets.only(bottom: petSheetBottomInset(context)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .86,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: petCream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: accountBorder,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDDF5EE),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.check_rounded,
-                        color: Color(0xFF176D61),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Avistamiento publicado',
-                            style: TextStyle(
-                              color: petInk,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            completed
-                                ? matches.isEmpty
-                                      ? 'La foto fue analizada sin una coincidencia clara.'
-                                      : 'Encontramos candidatos para que sus familias los revisen.'
-                                : 'La foto quedó guardada, aunque no pudimos compararla ahora.',
-                            style: const TextStyle(
-                              color: Color(0xFF176D61),
-                              fontSize: 13,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (matches.isNotEmpty)
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: matches.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) => Reveal(
-                      order: index,
-                      child: _VisualMatchCard(match: matches[index]),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .86,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: accountBorder,
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
-                )
-              else
+                ),
+                const SizedBox(height: 18),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(19),
-                    border: Border.all(color: accountBorder, width: 2),
+                    color: const Color(0xFFDDF5EE),
+                    borderRadius: BorderRadius.circular(22),
                   ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Icon(Icons.visibility_outlined, color: petDarkOrange),
-                      SizedBox(width: 11),
+                      const CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.check_rounded,
+                          color: Color(0xFF176D61),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 13),
                       Expanded(
-                        child: Text(
-                          'Se mostrará en el mapa como un avistamiento: una mascota vista cuya identidad todavía no está confirmada.',
-                          style: TextStyle(color: accountMuted, height: 1.4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Avistamiento publicado',
+                              style: TextStyle(
+                                color: petInk,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              completed
+                                  ? matches.isEmpty
+                                        ? 'La foto fue analizada sin una coincidencia clara.'
+                                        : 'Encontramos candidatos para que sus familias los revisen.'
+                                  : 'La foto quedó guardada, aunque no pudimos compararla ahora.',
+                              style: const TextStyle(
+                                color: Color(0xFF176D61),
+                                fontSize: 13,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1E8),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: petDarkOrange),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'El reconocimiento solo propone posibles coincidencias. La familia siempre debe verificarlas.',
-                        style: TextStyle(
-                          color: accountMuted,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
+                const SizedBox(height: 14),
+                if (matches.isNotEmpty)
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (_, index) => Reveal(
+                        order: index,
+                        child: _VisualMatchCard(match: matches[index]),
                       ),
                     ),
-                  ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(19),
+                      border: Border.all(color: accountBorder, width: 2),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.visibility_outlined, color: petDarkOrange),
+                        SizedBox(width: 11),
+                        Expanded(
+                          child: Text(
+                            'Se mostrará en el mapa como un avistamiento: una mascota vista cuya identidad todavía no está confirmada.',
+                            style: TextStyle(color: accountMuted, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1E8),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.shield_outlined, color: petDarkOrange),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'El reconocimiento solo propone posibles coincidencias. La familia siempre debe verificarlas.',
+                          style: TextStyle(
+                            color: accountMuted,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              AccountButton(
-                'Entendido',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
+                const SizedBox(height: 14),
+                AccountButton(
+                  'Entendido',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

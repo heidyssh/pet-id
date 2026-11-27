@@ -141,6 +141,44 @@ class Session extends ChangeNotifier {
   bool loading = true;
   String? restoreError;
 
+  String? get _mapLocationKey {
+    final id = user?['id_usuario'] ?? user?['id'];
+    return id == null ? null : 'petid.map-location.$id';
+  }
+
+  /// Conserva el último punto autorizado por la persona sin activar por sí
+  /// solo las notificaciones de zona. Esto permite reconstruir el mapa al
+  /// volver a iniciar sesión cuando Android no entrega una posición nueva.
+  Future<void> saveLastMapLocation(double latitude, double longitude) async {
+    final key = _mapLocationKey;
+    if (key == null) return;
+    try {
+      await _storage.write(
+        key: key,
+        value: jsonEncode({'latitud': latitude, 'longitud': longitude}),
+      );
+    } catch (_) {
+      // La ubicación actual sigue siendo utilizable aunque no pueda persistir.
+    }
+  }
+
+  Future<Map<String, double>?> readLastMapLocation() async {
+    final key = _mapLocationKey;
+    if (key == null) return null;
+    try {
+      final raw = await _storage.read(key: key);
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final latitude = decoded['latitud'];
+      final longitude = decoded['longitud'];
+      if (latitude is! num || longitude is! num) return null;
+      return {'latitud': latitude.toDouble(), 'longitud': longitude.toDouble()};
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> restore() async {
     loading = true;
     restoreError = null;

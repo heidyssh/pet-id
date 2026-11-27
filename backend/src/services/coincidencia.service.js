@@ -135,7 +135,6 @@ async function puntuacionesContexto(idAvistamiento) {
     WHERE a.id_avistamiento = :id_avistamiento
       AND a.estado IN ('registrado', 'revisado')
       AND r.estado = 'activo'
-      AND (a.id_especie IS NULL OR a.id_especie = m.id_especie)
       AND a.fecha_avistamiento >= r.fecha_perdida - INTERVAL '1 day'
       AND (a.id_usuario IS NULL OR a.id_usuario <> m.id_dueno)
   `, {
@@ -164,7 +163,6 @@ async function candidatosVisuales(vector, idAvistamiento) {
       AND r.estado = 'activo'
       AND vv.modelo = :modelo
       AND vv.dimensiones = :dimensiones
-      AND (a.id_especie IS NULL OR a.id_especie = m.id_especie)
       AND a.fecha_avistamiento >= r.fecha_perdida - INTERVAL '1 day'
       AND (a.id_usuario IS NULL OR a.id_usuario <> m.id_dueno)
   `, {

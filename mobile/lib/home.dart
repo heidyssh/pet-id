@@ -61,12 +61,23 @@ class _CitizenHomeState extends State<CitizenHome> {
       _petsError = null;
     });
     try {
-      final data = (await context.read<Session>().authRequest(
+      final session = context.read<Session>();
+      final first = (await session.authRequest(
         'GET',
-        '/mascotas/mias?limite=20',
+        '/mascotas/mias?pagina=1&limite=50',
       ))['data'];
+      final pets = [..._list(first['mascotas'])];
+      final totalPages =
+          (first['paginacion']?['total_paginas'] as num?)?.toInt() ?? 1;
+      for (var page = 2; page <= totalPages; page++) {
+        final data = (await session.authRequest(
+          'GET',
+          '/mascotas/mias?pagina=$page&limite=50',
+        ))['data'];
+        pets.addAll(_list(data['mascotas']));
+      }
       if (!mounted) return;
-      setState(() => _pets = _list(data['mascotas']));
+      setState(() => _pets = pets);
     } catch (_) {
       if (mounted) setState(() => _petsError = 'No se pudieron cargar.');
     } finally {
@@ -273,6 +284,7 @@ class _CitizenHomeState extends State<CitizenHome> {
       NearbyMapPage(
         key: ValueKey('nearby-$sessionUserId'),
         ownPetIds: _pets.map((pet) => '${pet['id_mascota']}').toSet(),
+        ownPetsLoaded: !_petsLoading && _petsError == null,
         onOpenOwnPet: _openPet,
       ),
       _petsPage(),
@@ -639,6 +651,15 @@ BoxDecoration _cardDecoration({
   borderRadius: BorderRadius.circular(22),
   border: Border.all(color: edge, width: 2),
   boxShadow: [BoxShadow(color: edge, offset: const Offset(0, 4))],
+);
+
+BoxDecoration _profileSurface({Color color = Colors.white}) => BoxDecoration(
+  color: color,
+  borderRadius: BorderRadius.circular(24),
+  border: Border.all(color: const Color(0xFFF4DACE)),
+  boxShadow: const [
+    BoxShadow(color: Color(0x120F2F2C), blurRadius: 22, offset: Offset(0, 8)),
+  ],
 );
 
 class _BellButton extends StatelessWidget {
@@ -1610,6 +1631,17 @@ class _ProfilePageState extends State<_ProfilePage> {
             ],
           ),
           ExpansionTile(
+            title: Text('¿Cuál es la diferencia entre perdida y vista?'),
+            children: [
+              Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  'Perdida es una mascota identificada que su familia está buscando. Vista es un avistamiento sin identidad confirmada; puede generar posibles coincidencias, pero no confirma que sea la misma mascota.',
+                ),
+              ),
+            ],
+          ),
+          ExpansionTile(
             title: Text('¿El reconocimiento confirma la identidad?'),
             children: [
               Padding(
@@ -1634,40 +1666,60 @@ class _ProfilePageState extends State<_ProfilePage> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: petCream,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          4,
-          20,
-          18 + petSheetBottomInset(context),
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: petCream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 26,
+              offset: Offset(0, -8),
+            ),
+          ],
         ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * .78,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            18 + petSheetBottomInset(context),
           ),
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: petInk,
-                    fontSize: 23,
-                    fontWeight: FontWeight.w900,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * .78,
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8CFC2),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                child,
-              ],
+                  const SizedBox(height: 18),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: petInk,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  child,
+                ],
+              ),
             ),
           ),
         ),
@@ -1743,7 +1795,22 @@ class _ProfilePageState extends State<_ProfilePage> {
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: _cardDecoration(),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white, Color(0xFFFFF5EE)],
+              ),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: const Color(0xFFF4DACE)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x160F2F2C),
+                  blurRadius: 24,
+                  offset: Offset(0, 9),
+                ),
+              ],
+            ),
             child: Column(
               children: [
                 Row(
@@ -1757,6 +1824,14 @@ class _ProfilePageState extends State<_ProfilePage> {
                           colors: [Color(0xFFFFA05E), petOrange],
                         ),
                         borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x26000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
                       ),
                       child: Text(
                         initials.isEmpty ? 'P' : initials.toUpperCase(),
@@ -1800,13 +1875,30 @@ class _ProfilePageState extends State<_ProfilePage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _ProfileStat('${widget.pets.length}', 'Mascotas'),
+                      child: _ProfileStat(
+                        '${widget.pets.length}',
+                        'Mascotas',
+                        Icons.pets_rounded,
+                        _mint,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: _ProfileStat('$_reports', 'Reportes')),
+                    Expanded(
+                      child: _ProfileStat(
+                        '$_reports',
+                        'Perdidas',
+                        Icons.campaign_outlined,
+                        const Color(0xFFFFD9E5),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _ProfileStat('$_sightings', 'Avistamientos'),
+                      child: _ProfileStat(
+                        '$_sightings',
+                        'Avistadas',
+                        Icons.visibility_outlined,
+                        _yellow,
+                      ),
                     ),
                   ],
                 ),
@@ -1861,7 +1953,7 @@ class _ProfilePageState extends State<_ProfilePage> {
           ),
           const SizedBox(height: 10),
           Container(
-            decoration: _cardDecoration(),
+            decoration: _profileSurface(),
             child: Column(
               children: [
                 _ProfileSetting(
@@ -1962,19 +2054,23 @@ class _RoleBadge extends StatelessWidget {
 }
 
 class _ProfileStat extends StatelessWidget {
-  const _ProfileStat(this.value, this.label);
+  const _ProfileStat(this.value, this.label, this.icon, this.color);
   final String value;
   final String label;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFF2EA),
+      color: color.withValues(alpha: .58),
       borderRadius: BorderRadius.circular(16),
     ),
     child: Column(
       children: [
+        Icon(icon, color: petInk, size: 18),
+        const SizedBox(height: 3),
         Text(
           value,
           style: const TextStyle(

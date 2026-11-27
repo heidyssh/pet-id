@@ -23,10 +23,12 @@ class NearbyMapPage extends StatefulWidget {
   const NearbyMapPage({
     super.key,
     this.ownPetIds = const <String>{},
+    this.ownPetsLoaded = true,
     this.onOpenOwnPet,
   });
 
   final Set<String> ownPetIds;
+  final bool ownPetsLoaded;
   final Future<void> Function(Map<String, dynamic> pet)? onOpenOwnPet;
 
   @override
@@ -70,26 +72,11 @@ class _NearbyMapPageState extends State<NearbyMapPage>
   Future<void> _load({required bool askPermission}) async {
     setState(() => _state = _LoadState.loading);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
+      final point = await _resolveMapPoint(askPermission: askPermission);
+      if (point == null) {
         if (mounted) setState(() => _state = _LoadState.noLocation);
         return;
       }
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied && askPermission) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        if (mounted) setState(() => _state = _LoadState.noLocation);
-        return;
-      }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
-      final point = LatLng(position.latitude, position.longitude);
       if (!mounted) return;
       final api = context.read<PetIdApi>();
       final query =
@@ -114,6 +101,56 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     }
   }
 
+  Future<LatLng?> _resolveMapPoint({required bool askPermission}) async {
+    final session = context.read<Session>();
+    try {
+      if (await Geolocator.isLocationServiceEnabled()) {
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied && askPermission) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 15),
+            ),
+          );
+          unawaited(
+            session.saveLastMapLocation(position.latitude, position.longitude),
+          );
+          return LatLng(position.latitude, position.longitude);
+        }
+      }
+    } catch (_) {
+      // Si el GPS falla, se intenta usar la ubicación guardada.
+    }
+
+    try {
+      final response = await session.authRequest(
+        'GET',
+        '/notificaciones/ubicacion-alertas',
+      );
+      final data = response['data'] as Map?;
+      final location = data?['ubicacion'] as Map?;
+      final latitude = _apiDouble(location?['latitud']);
+      final longitude = _apiDouble(location?['longitud']);
+      if (latitude != null && longitude != null) {
+        unawaited(session.saveLastMapLocation(latitude, longitude));
+        return LatLng(latitude, longitude);
+      }
+    } catch (_) {
+      // Solo se pide ubicación otra vez si tampoco hay una guardada.
+    }
+    final saved = await session.readLastMapLocation();
+    final latitude = saved?['latitud'];
+    final longitude = saved?['longitud'];
+    return latitude == null || longitude == null
+        ? null
+        : LatLng(latitude, longitude);
+  }
+
   void _select(Map<String, dynamic> item) {
     setState(() => _selected = _keyOf(item));
     final point = _pointOf(item);
@@ -125,6 +162,7 @@ class _NearbyMapPageState extends State<NearbyMapPage>
     final sighted = item['tipo_alerta'] == 'avistado';
     final ownPet =
         !sighted && widget.ownPetIds.contains('${item['id_mascota']}');
+    final ownershipReady = sighted || widget.ownPetsLoaded;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -140,7 +178,7 @@ class _NearbyMapPageState extends State<NearbyMapPage>
                 if (mounted) await _load(askPermission: false);
               }
             : null,
-        onReportSighting: sighted || ownPet
+        onReportSighting: sighted || ownPet || !ownershipReady
             ? null
             : () {
                 Navigator.pop(sheetContext);
@@ -273,7 +311,7 @@ class _NearbyMapPageState extends State<NearbyMapPage>
       const SizedBox(width: 7),
       Expanded(child: _filterButton(_Filter.lost, 'Perdidas', _pink)),
       const SizedBox(width: 7),
-      Expanded(child: _filterButton(_Filter.sighted, 'Avistadas', _yellow)),
+      Expanded(child: _filterButton(_Filter.sighted, 'Vistas', _yellow)),
     ],
   );
 
@@ -469,16 +507,13 @@ class _AlertCard extends StatelessWidget {
     final color = sighted ? _yellow : _pink;
     final photo = context.read<PetIdApi>().imageUrl(item['foto']);
     final title = sighted
-        ? [
-            item['especie'],
-            item['color_principal'],
-          ].whereType<String>().where((value) => value.isNotEmpty).join(' · ')
+        ? 'Mascota avistada'
         : [
             item['nombre_mascota'],
             item['raza'] ?? item['especie'],
           ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
     final place = [
-      sighted ? 'Avistada' : 'Perdida',
+      sighted ? 'Avistamiento sin identificar' : 'Perdida',
       item['referencia_lugar'],
       _distance(item['distancia_km']),
     ].whereType<String>().where((value) => value.isNotEmpty).join(' · ');
@@ -686,7 +721,9 @@ class _AlertDetailSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Text(
-                    sighted ? 'AVISTAMIENTO' : 'MASCOTA PERDIDA',
+                    sighted
+                        ? 'REPORTE DE AVISTAMIENTO'
+                        : 'ALERTA DE MASCOTA PERDIDA',
                     style: const TextStyle(
                       color: petInk,
                       fontSize: 11,
@@ -707,15 +744,12 @@ class _AlertDetailSheet extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 [
-                      sighted
-                          ? 'Vista por alguien; su identidad no está confirmada'
-                          : 'Su familia la está buscando',
-                      item['referencia_lugar'],
-                      _distance(item['distancia_km']),
-                    ]
-                    .whereType<String>()
-                    .where((value) => value.isNotEmpty)
-                    .join(' · '),
+                  sighted
+                      ? 'Alguien vio este animal; todavía no se sabe a qué familia pertenece'
+                      : 'Es una mascota identificada y su familia la está buscando',
+                  item['referencia_lugar'],
+                  _distance(item['distancia_km']),
+                ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
                 style: const TextStyle(color: accountMuted, height: 1.35),
               ),
               if ('${item['senas_particulares'] ?? item['descripcion'] ?? ''}'
@@ -753,7 +787,7 @@ class _AlertDetailSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: const Text(
-                    'Esta alerta es tuya. Si tu mascota ya regresó, abre su ficha y márcala como encontrada.',
+                    'Esta alerta pertenece a tu mascota. No puedes reportar un avistamiento contra tu propia alerta. Si ya regresó, abre su ficha y márcala como encontrada.',
                     style: TextStyle(
                       color: Color(0xFF176D61),
                       height: 1.4,

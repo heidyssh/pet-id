@@ -48,6 +48,9 @@ jobs:
       - name: Revisar el código
         run: flutter analyze
 
+      - name: Probar los flujos de la aplicación
+        run: flutter test --no-pub
+
       - name: Generar APK
         env:
           PETID_API_URL: ${{ inputs.api_url }}

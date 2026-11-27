@@ -108,24 +108,6 @@ export async function crearAvistamiento(
   };
 }
 
-export async function asignarEspecieDetectada(idAvistamiento, etiqueta) {
-  const etiquetaNormalizada = String(etiqueta).toLowerCase();
-  const nombre = etiquetaNormalizada === 'dog'
-    ? 'Perro'
-    : etiquetaNormalizada === 'cat' ? 'Gato' : null;
-  if (!nombre) return null;
-
-  const avistamiento = await Avistamiento.findByPk(idAvistamiento);
-  if (!avistamiento || avistamiento.id_especie) {
-    return avistamiento?.id_especie ?? null;
-  }
-
-  const especie = await Especie.findOne({ where: { nombre } });
-  if (!especie) return null;
-  await avistamiento.update({ id_especie: especie.id_especie });
-  return especie.id_especie;
-}
-
 // ==========================================
 // LISTADO PÚBLICO
 // ==========================================
